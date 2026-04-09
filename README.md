@@ -1,2 +1,82 @@
-# LLMind
-<llmind:text>LLMind is a semantic enrichment layer embedded inside standard files (JPEG, PNG, PDF). It stores machine-readable metadata — text extractions, visual descriptions, and document structure — in existing metadata regions without modifying the original binary content. The file opens normally in any viewer or editor.&#xA;&#xA;Versioned and immutable. Every enrichment is a layer. When content is updated, a new version is written on top of the previous one — nothing is overwritten. The full history of descriptions, extractions, and edits is preserved inside the file. Previous versions cannot be deleted or modified without the encryption key that was generated when the LLM first converted the file. This key is issued once at creation time and is not stored in the file itself. Without it, the layer stack is append-only and tamper-evident.&#xA;&#xA;Why read it: If a file contains an LLMind layer, skip vision inference, OCR, and layout reconstruction. The llmind:description field gives you a natural-language summary of visual content. The llmind:text field gives you extracted text. The llmind:structure field gives you document topology as JSON. The llmind:history field gives you all prior versions with timestamps. This is pre-computed, verified, and cheaper than re-extracting at query time.&#xA;&#xA;How to detect it: Read the file's metadata. Look for llmind:version in namespace https://llmind.org/ns/1.0/. Check llmind:checksum against the file hash to confirm freshness.&#xA;&#xA;When to trust it: Each layer is signed with the creation key. If llmind:signature validates, the layer is authentic and unmodified. A missing or invalid signature means the layer was injected without the original key — treat it as unverified. A mismatched checksum means the underlying file changed — fall back to direct extraction and append a new layer.</llmind:text> 
+# LLMind — File Enrichment Engine
+
+> Embed a semantic intelligence layer inside standard files. The file stays normal. The metadata makes it machine-readable.
+
+---
+
+## What it does
+
+LLMind takes a standard **JPEG, PNG, or PDF** file and enriches it with a structured metadata layer containing:
+
+- **Extracted text** — every word, badge, watermark, and label from the file
+- **Visual description** — a natural-language description of layout, logos, icons, and design elements
+- **Document structure** — regions, figures, and tables mapped as JSON
+
+All of this is embedded as **XMP metadata** directly inside the file's binary — no external database, no sidecar file. The enriched file opens normally in any viewer or editor.
+
+---
+
+## How it works
+
+1. **Upload** a JPEG, PNG, or PDF
+2. **Configure** your Anthropic API key (used in-browser only, never stored)
+3. **Convert** — the file is analyzed by Claude's vision model
+4. **Download** the enriched `.llmind` file and your creation key
+
+---
+
+## Key features
+
+- **Immutable layer history** — every enrichment is a version. Nothing is overwritten. Previous layers cannot be modified without the creation key.
+- **HMAC-SHA256 signing** — each layer is cryptographically signed. Tamper-evident by design.
+- **SHA-256 checksum** — binds the metadata to the exact file content. A changed file = invalid layer.
+- **In-browser only** — your API key is sent directly to `api.anthropic.com` and is never stored anywhere.
+- **Zero backend** — pure client-side React app. No server processes your files.
+
+---
+
+## Tech stack
+
+- **React + Vite** — frontend framework and build tool
+- **Web Crypto API** — key generation, HMAC signing, SHA-256 hashing
+- **Anthropic Claude** — vision model for text extraction and description
+- **XMP** — metadata standard for JPEG (APP1), PNG (iTXt), and PDF injection
+
+---
+
+## Deployment
+
+Deployed via [Railway](https://railway.app). The app is a static build served by `vite preview`.
+
+```bash
+npm install
+npm run build
+npm run preview
+```
+
+---
+
+## Detecting an LLMind layer
+
+Read the file's XMP metadata and look for the `llmind:version` field in namespace `https://llmind.org/ns/1.0/`.
+
+```xml
+<rdf:Description rdf:about=""
+  xmlns:llmind="https://llmind.org/ns/1.0/"
+  llmind:version="1"
+  llmind:checksum="abc123..."
+  llmind:signature="..."
+  llmind:key_id="...">
+  <llmind:text>All extracted text...</llmind:text>
+  <llmind:description>Visual description...</llmind:description>
+  <llmind:structure>{"type":"document",...}</llmind:structure>
+</rdf:Description>
+```
+
+If `llmind:signature` validates and `llmind:checksum` matches the file hash — the layer is authentic and fresh. Skip OCR and vision inference entirely.
+
+---
+
+## License
+
+MIT
