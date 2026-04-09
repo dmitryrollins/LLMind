@@ -25,6 +25,15 @@ function xmlEsc(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+function bytesToBase64(bytes) {
+  const chunks = [];
+  const chunkSize = 32768;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    chunks.push(String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize)));
+  }
+  return btoa(chunks.join(""));
+}
+
 // Build XMP packet
 function buildXMP(layer, history, keyId) {
   return `<?xpacket begin="\ufeff" id="W5M0MpCehiHzreSzNTczkc9d"?>
@@ -147,8 +156,9 @@ function injectPDF(original, xmpXml) {
   if (eofIdx === -1) return original;
 
   const before = original.slice(0, eofIdx);
+  const b64Xmp = bytesToBase64(xmpBytes);
   const xmpComment = new TextEncoder().encode(
-    `\n% LLMind XMP Metadata (embedded)\n% ${btoa(String.fromCharCode(...xmpBytes)).match(/.{1,76}/g).join("\n% ")}\n%%EOF\n`
+    `\n% LLMind XMP Metadata (embedded)\n% ${b64Xmp.match(/.{1,76}/g).join("\n% ")}\n%%EOF\n`
   );
   const result = new Uint8Array(before.length + xmpComment.length);
   result.set(before, 0);
@@ -233,7 +243,7 @@ export default function LLMindConverter() {
       const checksum = await sha256(fileData);
 
       // 2. Convert file to base64
-      const b64 = btoa(String.fromCharCode(...fileData));
+      const b64 = bytesToBase64(fileData);
       const mediaType = file.type === "image/png" ? "image/png" : file.type === "application/pdf" ? "application/pdf" : "image/jpeg";
       const isImage = file.type.startsWith("image/");
       const isPDF = file.type === "application/pdf";
