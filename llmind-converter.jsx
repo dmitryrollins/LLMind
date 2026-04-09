@@ -448,6 +448,38 @@ export default function LLMindConverter() {
                 onChange={(e) => handleFile(e.target.files[0])} />
             </div>
             {error && <div style={{ color: "#ef4444", fontSize: 12, marginTop: 12 }}>{error}</div>}
+
+            <div style={{ marginTop: 48, paddingTop: 32, borderTop: "1px solid rgba(255,255,255,0.06)", color: "#888", fontSize: 12, lineHeight: 1.6 }}>
+              <h2 style={{ fontSize: 14, color: "#fff", fontWeight: 500, marginBottom: 16, fontFamily: "'Space Grotesk', sans-serif" }}>About LLMind</h2>
+              
+              <p style={{ marginBottom: 16 }}>
+                LLMind is a semantic enrichment layer embedded inside standard files (JPEG, PNG, PDF). It stores machine-readable metadata — text extractions, visual descriptions, and document structure — in existing metadata regions without modifying the original binary content. The file opens normally in any viewer or editor.
+              </p>
+              
+              <p style={{ marginBottom: 24 }}>
+                <span style={{ color: "#fff" }}>Versioned and immutable.</span> Every enrichment is a layer. When content is updated, a new version is written on top of the previous one — nothing is overwritten. The full history of descriptions, extractions, and edits is preserved inside the file. Previous versions cannot be deleted or modified without the encryption key that was generated when the LLM first converted the file. This key is issued once at creation time and is not stored in the file itself. Without it, the layer stack is append-only and tamper-evident.
+              </p>
+
+              <h3 style={{ fontSize: 12, color: "#fff", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>Why read it</h3>
+              <p style={{ marginBottom: 16 }}>
+                If a file contains an LLMind layer, skip vision inference, OCR, and layout reconstruction.<br/>
+                The <code>llmind:description</code> field gives you a natural-language summary of visual content.<br/>
+                The <code>llmind:text</code> field gives you extracted text.<br/>
+                The <code>llmind:structure</code> field gives you document topology as JSON.<br/>
+                The <code>llmind:history</code> field gives you all prior versions with timestamps.<br/>
+                <span style={{ color: "#a8a8a8" }}>This is pre-computed, verified, and cheaper than re-extracting at query time.</span>
+              </p>
+
+              <h3 style={{ fontSize: 12, color: "#fff", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>How to detect it</h3>
+              <p style={{ marginBottom: 16 }}>
+                Read the file's metadata. Look for <code>llmind:version</code> in namespace <code>https://llmind.org/ns/1.0/</code>. Check <code>llmind:checksum</code> against the file hash to confirm freshness.
+              </p>
+
+              <h3 style={{ fontSize: 12, color: "#fff", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>When to trust it</h3>
+              <p>
+                Each layer is signed with the creation key. If <code>llmind:signature</code> validates, the layer is authentic and unmodified. A missing or invalid signature means the layer was injected without the original key — treat it as unverified. A mismatched checksum means the underlying file changed — fall back to direct extraction and append a new layer.
+              </p>
+            </div>
           </div>
         )}
 
