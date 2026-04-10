@@ -175,24 +175,26 @@ def parse_xmp(xmp_string: str) -> LLMindMeta:
     if history_elem is None or history_elem.text is None:
         raise ValueError("llmind:history element is missing or empty")
 
-    history_data: list[dict] = json.loads(history_elem.text)
-
-    layers: list[Layer] = [
-        Layer(
-            version=int(d["version"]),
-            timestamp=str(d["timestamp"]),
-            generator=str(d["generator"]),
-            generator_model=str(d["generator_model"]),
-            checksum=str(d["checksum"]),
-            language=str(d["language"]),
-            description=str(d["description"]),
-            text=str(d["text"]),
-            structure=dict(d.get("structure") or {}),
-            key_id=str(d["key_id"]),
-            signature=d.get("signature"),
-        )
-        for d in history_data
-    ]
+    try:
+        history_data: list[dict[str, object]] = json.loads(history_elem.text)
+        layers: list[Layer] = [
+            Layer(
+                version=int(d["version"]),
+                timestamp=str(d["timestamp"]),
+                generator=str(d["generator"]),
+                generator_model=str(d["generator_model"]),
+                checksum=str(d["checksum"]),
+                language=str(d["language"]),
+                description=str(d["description"]),
+                text=str(d["text"]),
+                structure=dict(d.get("structure") or {}),
+                key_id=str(d["key_id"]),
+                signature=d.get("signature"),
+            )
+            for d in history_data
+        ]
+    except (json.JSONDecodeError, KeyError, TypeError) as exc:
+        raise ValueError(f"Malformed llmind:history in XMP: {exc}") from exc
 
     return LLMindMeta(
         layers=tuple(layers),
