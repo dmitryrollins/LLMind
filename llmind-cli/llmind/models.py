@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import NamedTuple
 from pathlib import Path
 
@@ -43,6 +43,16 @@ class LLMindMeta:
     current: Layer              # layers[-1]
     layer_count: int
     immutable: bool
+
+    def __post_init__(self) -> None:
+        if not self.layers:
+            raise ValueError("layers must not be empty")
+        if self.layer_count != len(self.layers):
+            raise ValueError(
+                f"layer_count ({self.layer_count}) != len(layers) ({len(self.layers)})"
+            )
+        if self.current != self.layers[-1]:
+            raise ValueError("current must equal layers[-1]")
 
 
 class EnrichResult(NamedTuple):
