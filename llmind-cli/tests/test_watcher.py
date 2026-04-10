@@ -115,3 +115,99 @@ def test_run_watch_backfill_skips_enriched(tmp_path: Path) -> None:
     run_watch(tmp_path, lambda path: calls.append(path), mode=WatchMode.BACKFILL, stop_event=_stopped_event())
 
     assert p not in calls
+
+
+# ---------------------------------------------------------------------------
+# Coverage: _LLMindHandler event handling and flush_pending
+# ---------------------------------------------------------------------------
+
+def test_handler_on_created_processes_file(tmp_path: Path) -> None:
+    """_LLMindHandler.on_created should queue supported files."""
+    from watchdog.events import FileCreatedEvent
+    from llmind.watcher import _LLMindHandler
+
+    calls: list[Path] = []
+    handler = _LLMindHandler(lambda p: calls.append(p), frozenset({".jpg", ".jpeg"}), debounce_seconds=0.0)
+
+    p = _jpeg_in(tmp_path, "new.jpg")
+    event = FileCreatedEvent(str(p))
+    handler.on_created(event)
+
+    # debounce_seconds=0.0, so flush should process immediately
+    import time
+    time.sleep(0.01)
+    handler.flush_pending()
+    assert p in calls
+
+
+def test_handler_on_modified_processes_file(tmp_path: Path) -> None:
+    """_LLMindHandler.on_modified should queue supported files."""
+    from watchdog.events import FileModifiedEvent
+    from llmind.watcher import _LLMindHandler
+
+    calls: list[Path] = []
+    handler = _LLMindHandler(lambda p: calls.append(p), frozenset({".jpg", ".jpeg"}), debounce_seconds=0.0)
+
+    p = _jpeg_in(tmp_path, "mod.jpg")
+    event = FileModifiedEvent(str(p))
+    handler.on_modified(event)
+
+    import time
+    time.sleep(0.01)
+    handler.flush_pending()
+    assert p in calls
+
+
+def test_handler_skips_directory_events(tmp_path: Path) -> None:
+    """_LLMindHandler should skip directory events."""
+    from watchdog.events import FileCreatedEvent, FileModifiedEvent
+    from llmind.watcher import _LLMindHandler
+
+    calls: list[Path] = []
+    handler = _LLMindHandler(lambda p: calls.append(p), frozenset({".jpg"}), debounce_seconds=0.0)
+
+    # Simulate directory event (is_directory=True)
+    created_event = FileCreatedEvent(str(tmp_path))
+    created_event.is_directory = True
+    modified_event = FileModifiedEvent(str(tmp_path))
+    modified_event.is_directory = True
+
+    handler.on_created(created_event)
+    handler.on_modified(modified_event)
+    handler.flush_pending()
+
+    assert calls == []
+
+
+def test_handler_skips_unsupported_extension(tmp_path: Path) -> None:
+    """_LLMindHandler should not queue files with unsupported extensions."""
+    from watchdog.events import FileCreatedEvent
+    from llmind.watcher import _LLMindHandler
+
+    exe = tmp_path / "bad.exe"
+    exe.write_bytes(b"MZ\x00")
+
+    calls: list[Path] = []
+    handler = _LLMindHandler(lambda p: calls.append(p), frozenset({".jpg"}), debounce_seconds=0.0)
+    handler.on_created(FileCreatedEvent(str(exe)))
+    handler.flush_pending()
+
+    assert calls == []
+
+
+def test_run_watch_with_observer(tmp_path: Path) -> None:
+    """run_watch starts and stops the Observer correctly via stop_event."""
+    import threading
+
+    calls: list[Path] = []
+    stop = threading.Event()
+
+    # Run in a background thread; set stop immediately so it exits the loop
+    def _run():
+        stop.set()
+        run_watch(tmp_path, lambda p: calls.append(p), mode=WatchMode.NEW, stop_event=stop)
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+    t.join(timeout=5.0)
+    assert not t.is_alive(), "run_watch should have exited"
