@@ -54,7 +54,7 @@ def enrich(paths, model, key_path, force, generate_key, key_output, provider):
         if result.skipped:
             console.print(f"[yellow]SKIP[/yellow] {path.name} (already fresh)")
         elif result.success:
-            console.print(f"[green]OK[/green]   {path.name} v{result.version} ({result.elapsed:.1f}s)")
+            console.print(f"[green]OK[/green]   {result.path.name} v{result.version} ({result.elapsed:.1f}s)")
         else:
             console.print(f"[red]ERR[/red]  {path.name}: {result.error}")
 

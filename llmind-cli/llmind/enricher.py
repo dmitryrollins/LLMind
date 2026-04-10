@@ -145,10 +145,14 @@ def _enrich(
     xmp = build_xmp(all_layers)
     inject(path, xmp)
 
+    # Rename to <stem>.llmind<suffix>  (e.g. photo.png → photo.llmind.png)
+    out_path = path.with_name(path.stem + ".llmind" + path.suffix)
+    path.replace(out_path)
+
     elapsed = time.monotonic() - start
     structure = extraction.structure
     return EnrichResult(
-        path=path,
+        path=out_path,
         success=True,
         skipped=False,
         version=version,
