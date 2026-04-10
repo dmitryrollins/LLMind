@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llmind-cli"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.0",
+    "pillow>=10.0",
+    "pikepdf>=8.0",
+    "watchdog>=3.0",
+    "requests>=2.31",
+    "pdf2image>=1.16",
+    "rich>=13.0",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+llmind = "llmind.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "pytest-cov>=4.0", "responses>=0.23"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
