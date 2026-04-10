@@ -5,7 +5,7 @@ Steps:
 2. Compute SHA-256 checksum
 3. Freshness check (skip if already enriched with same checksum)
 4. Load image bytes (PDF: convert pages via pdf2image)
-5. Query Ollama
+5. Query vision provider
 6. Build Layer dataclass
 7. Read existing layers from XMP (if any)
 8. Append new layer to history
@@ -24,7 +24,7 @@ from pathlib import Path
 from llmind.crypto import derive_key_id, sha256_file, sign_layer
 from llmind.injector import inject
 from llmind.models import EnrichResult, Layer
-from llmind.ollama import query_ollama, query_ollama_pdf
+from llmind.vision import query_image, query_pdf, PROVIDER_DEFAULTS
 from llmind.reader import is_fresh, read as read_meta
 from llmind.safety import is_safe_file
 from llmind.xmp import build_xmp, layer_to_dict
@@ -32,11 +32,12 @@ from llmind.xmp import build_xmp, layer_to_dict
 
 def enrich(
     path: Path,
-    model: str = "qwen2.5-vl:7b",
+    model: str | None = None,
     base_url: str = "http://localhost:11434/api/chat",
     creation_key: str | None = None,
     generator: str = "llmind-cli/0.1.0",
     force: bool = False,
+    provider: str = "ollama",
 ) -> EnrichResult:
     """Enrich a file with LLMind semantic XMP metadata.
 
@@ -45,18 +46,19 @@ def enrich(
 
     Args:
         path: Path to the image or PDF file.
-        model: Ollama model identifier.
-        base_url: Ollama API endpoint URL.
+        model: Model identifier. Defaults to provider-specific default if None.
+        base_url: Ollama API endpoint URL (used only for ollama provider).
         creation_key: 64-char hex key for signing. Omit to skip signing.
         generator: Generator string written into the layer.
         force: If True, re-enrich even if the file is already fresh.
+        provider: Vision AI provider ("ollama", "anthropic", "openai").
 
     Returns:
         EnrichResult describing the outcome of the enrichment attempt.
     """
     start = time.monotonic()
     try:
-        return _enrich(path, model, base_url, creation_key, generator, force, start)
+        return _enrich(path, model, base_url, creation_key, generator, force, start, provider)
     except Exception as exc:
         elapsed = time.monotonic() - start
         return EnrichResult(
@@ -74,12 +76,13 @@ def enrich(
 
 def _enrich(
     path: Path,
-    model: str,
+    model: str | None,
     base_url: str,
     creation_key: str | None,
     generator: str,
     force: bool,
     start: float,
+    provider: str = "ollama",
 ) -> EnrichResult:
     """Internal enrichment logic — may raise; caller wraps exceptions."""
     if not is_safe_file(path):
@@ -100,13 +103,15 @@ def _enrich(
             error=None,
         )
 
-    # Query Ollama
+    # Query vision provider
     suffix = path.suffix.lower()
     if suffix == ".pdf":
         image_pages = _pdf_to_images(path)
-        extraction = query_ollama_pdf(image_pages, model=model, base_url=base_url)
+        extraction = query_pdf(image_pages, provider=provider, model=model, base_url=base_url)
     else:
-        extraction = query_ollama(path.read_bytes(), model=model, base_url=base_url)
+        extraction = query_image(path.read_bytes(), provider=provider, model=model, base_url=base_url)
+
+    resolved_model = model or PROVIDER_DEFAULTS.get(provider, "")
 
     # Read existing layers
     existing_meta = read_meta(path)
@@ -119,7 +124,7 @@ def _enrich(
         version=version,
         timestamp=timestamp,
         generator=generator,
-        generator_model=model,
+        generator_model=resolved_model,
         checksum=checksum,
         language=extraction.language,
         description=extraction.description,

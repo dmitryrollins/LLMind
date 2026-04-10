@@ -35,7 +35,7 @@ MOCK_EXTRACTION_WITH_STRUCTURE = ExtractionResult(
 
 
 @patch("llmind.enricher.inject")
-@patch("llmind.enricher.query_ollama", return_value=MOCK_EXTRACTION)
+@patch("llmind.enricher.query_image", return_value=MOCK_EXTRACTION)
 def test_enrich_success(mock_query, mock_inject, jpeg_file: Path) -> None:
     """Successful enrichment returns success=True, skipped=False, version=1, no error."""
     result = enrich(jpeg_file)
@@ -53,7 +53,7 @@ def test_enrich_success(mock_query, mock_inject, jpeg_file: Path) -> None:
 
 
 @patch("llmind.enricher.is_fresh", return_value=True)
-@patch("llmind.enricher.query_ollama", return_value=MOCK_EXTRACTION)
+@patch("llmind.enricher.query_image", return_value=MOCK_EXTRACTION)
 def test_enrich_skips_fresh_file(mock_query, mock_is_fresh, jpeg_file: Path) -> None:
     """Enrichment is skipped when is_fresh() reports the file is already enriched."""
     result = enrich(jpeg_file)
@@ -62,13 +62,13 @@ def test_enrich_skips_fresh_file(mock_query, mock_is_fresh, jpeg_file: Path) -> 
     assert result.success is False
     assert result.version is None
     assert result.error is None
-    # query_ollama should NOT be called for a fresh file
+    # query_image should NOT be called for a fresh file
     mock_query.assert_not_called()
 
 
 @patch("llmind.enricher.inject")
 @patch("llmind.enricher.is_fresh", return_value=True)
-@patch("llmind.enricher.query_ollama", return_value=MOCK_EXTRACTION)
+@patch("llmind.enricher.query_image", return_value=MOCK_EXTRACTION)
 def test_enrich_force_overwrites(mock_query, mock_is_fresh, mock_inject, jpeg_file: Path) -> None:
     """force=True re-enriches even when is_fresh() reports the file is fresh."""
     result = enrich(jpeg_file, force=True)
@@ -81,7 +81,7 @@ def test_enrich_force_overwrites(mock_query, mock_is_fresh, mock_inject, jpeg_fi
 
 
 @patch("llmind.enricher.inject", wraps=inject)
-@patch("llmind.enricher.query_ollama", return_value=MOCK_EXTRACTION)
+@patch("llmind.enricher.query_image", return_value=MOCK_EXTRACTION)
 def test_enrich_increments_version(mock_query, mock_inject, jpeg_file: Path, sample_layer) -> None:
     """Second enrichment produces version=2 (appended to existing layer history)."""
     # Inject existing layer with a different checksum so freshness check doesn't skip
@@ -94,7 +94,7 @@ def test_enrich_increments_version(mock_query, mock_inject, jpeg_file: Path, sam
 
 
 @patch("llmind.enricher.inject", wraps=inject)
-@patch("llmind.enricher.query_ollama", return_value=MOCK_EXTRACTION)
+@patch("llmind.enricher.query_image", return_value=MOCK_EXTRACTION)
 def test_enrich_signs_layer_when_key_provided(mock_query, mock_inject, jpeg_file: Path) -> None:
     """When creation_key is given, the stored layer has a non-empty signature."""
     creation_key = "a" * 64  # 256-bit hex key
@@ -110,7 +110,7 @@ def test_enrich_signs_layer_when_key_provided(mock_query, mock_inject, jpeg_file
 
 
 @patch("llmind.enricher.inject")
-@patch("llmind.enricher.query_ollama", side_effect=RuntimeError("Ollama unreachable"))
+@patch("llmind.enricher.query_image", side_effect=RuntimeError("Provider unreachable"))
 def test_enrich_captures_exception(mock_query, mock_inject, jpeg_file: Path) -> None:
     """Exceptions during enrichment are captured into EnrichResult.error."""
     result = enrich(jpeg_file)
@@ -136,7 +136,7 @@ def test_enrich_unsafe_file_returns_error(tmp_path: Path) -> None:
 
 
 @patch("llmind.enricher.inject")
-@patch("llmind.enricher.query_ollama", return_value=MOCK_EXTRACTION_WITH_STRUCTURE)
+@patch("llmind.enricher.query_image", return_value=MOCK_EXTRACTION_WITH_STRUCTURE)
 def test_enrich_counts_structure_elements(mock_query, mock_inject, jpeg_file: Path) -> None:
     """EnrichResult correctly counts regions, figures, and tables from extraction."""
     result = enrich(jpeg_file)
@@ -145,3 +145,41 @@ def test_enrich_counts_structure_elements(mock_query, mock_inject, jpeg_file: Pa
     assert result.regions == 1
     assert result.figures == 1
     assert result.tables == 1
+
+
+# ---------------------------------------------------------------------------
+# Provider tests
+# ---------------------------------------------------------------------------
+
+
+@patch("llmind.enricher.inject")
+@patch("llmind.enricher.query_image", return_value=MOCK_EXTRACTION)
+def test_enrich_provider_default_is_ollama(mock_query, mock_inject, jpeg_file: Path) -> None:
+    """Default provider is ollama."""
+    result = enrich(jpeg_file)
+
+    assert result.success is True
+    call_kwargs = mock_query.call_args.kwargs
+    assert call_kwargs.get("provider") == "ollama"
+
+
+@patch("llmind.enricher.inject")
+@patch("llmind.enricher.query_image", return_value=MOCK_EXTRACTION)
+def test_enrich_anthropic_provider(mock_query, mock_inject, jpeg_file: Path) -> None:
+    """provider='anthropic' is passed through to query_image."""
+    result = enrich(jpeg_file, provider="anthropic")
+
+    assert result.success is True
+    call_kwargs = mock_query.call_args.kwargs
+    assert call_kwargs.get("provider") == "anthropic"
+
+
+@patch("llmind.enricher.inject")
+@patch("llmind.enricher.query_image", return_value=MOCK_EXTRACTION)
+def test_enrich_openai_provider(mock_query, mock_inject, jpeg_file: Path) -> None:
+    """provider='openai' is passed through to query_image."""
+    result = enrich(jpeg_file, provider="openai")
+
+    assert result.success is True
+    call_kwargs = mock_query.call_args.kwargs
+    assert call_kwargs.get("provider") == "openai"

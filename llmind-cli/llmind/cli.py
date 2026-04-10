@@ -17,12 +17,19 @@ def main() -> None:
 
 @main.command()
 @click.argument("paths", nargs=-1, type=click.Path(exists=True, path_type=Path))
-@click.option("--model", default="qwen2.5-vl:7b", show_default=True)
+@click.option("--model", default=None, show_default=True, help="Model identifier (defaults to provider default)")
 @click.option("--key", "key_path", type=click.Path(path_type=Path), default=None, help="Path to .key file")
 @click.option("--force", is_flag=True, default=False)
 @click.option("--generate-key", is_flag=True, default=False, help="Generate a new signing key")
 @click.option("--key-output", type=click.Path(path_type=Path), default=None, help="Directory to save generated key")
-def enrich(paths, model, key_path, force, generate_key, key_output):
+@click.option(
+    "--provider",
+    type=click.Choice(["ollama", "anthropic", "openai"]),
+    default="ollama",
+    show_default=True,
+    help="Vision AI provider to use.",
+)
+def enrich(paths, model, key_path, force, generate_key, key_output, provider):
     """Enrich files with semantic XMP metadata."""
     from llmind.enricher import enrich as do_enrich
     from llmind.crypto import generate_key as gen_key, save_key_file, load_key_file, derive_key_id
@@ -43,7 +50,7 @@ def enrich(paths, model, key_path, force, generate_key, key_output):
         creation_key = kf.creation_key
 
     for path in paths:
-        result = do_enrich(path, model=model, creation_key=creation_key, force=force)
+        result = do_enrich(path, model=model, creation_key=creation_key, force=force, provider=provider)
         if result.skipped:
             console.print(f"[yellow]SKIP[/yellow] {path.name} (already fresh)")
         elif result.success:
@@ -148,9 +155,16 @@ def strip(paths):
 @main.command()
 @click.argument("directory", type=click.Path(exists=True, file_okay=False, path_type=Path))
 @click.option("--mode", type=click.Choice(["new", "backfill", "existing"]), default="new", show_default=True)
-@click.option("--model", default="qwen2.5-vl:7b", show_default=True)
+@click.option("--model", default=None, show_default=True, help="Model identifier (defaults to provider default)")
 @click.option("--key", "key_path", type=click.Path(path_type=Path), default=None)
-def watch(directory, mode, model, key_path):
+@click.option(
+    "--provider",
+    type=click.Choice(["ollama", "anthropic", "openai"]),
+    default="ollama",
+    show_default=True,
+    help="Vision AI provider to use.",
+)
+def watch(directory, mode, model, key_path, provider):
     """Watch a directory and enrich new files automatically."""
     from llmind.watcher import run_watch, WatchMode
     from llmind.enricher import enrich as do_enrich
@@ -163,7 +177,7 @@ def watch(directory, mode, model, key_path):
     watch_mode = WatchMode(mode)
 
     def _enrich(path):
-        result = do_enrich(path, model=model, creation_key=creation_key)
+        result = do_enrich(path, model=model, creation_key=creation_key, provider=provider)
         if result.skipped:
             console.print(f"[yellow]SKIP[/yellow] {path.name}")
         elif result.success:

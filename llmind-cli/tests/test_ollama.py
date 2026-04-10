@@ -6,7 +6,8 @@ import pytest
 import requests
 import responses as responses_lib
 
-from llmind.ollama import _parse_response, query_ollama, query_ollama_pdf
+from llmind.ollama import query_ollama
+from llmind.vision import _parse_response
 
 MOCK_PAYLOAD = {
     "language": "en",
@@ -107,52 +108,7 @@ def test_query_ollama_raises_on_http_error():
 
 
 # ---------------------------------------------------------------------------
-# query_ollama_pdf
-# ---------------------------------------------------------------------------
-
-
-@responses_lib.activate
-def test_query_pdf_single_page():
-    responses_lib.add(
-        responses_lib.POST,
-        OLLAMA_URL,
-        json=MOCK_RESPONSE,
-        status=200,
-    )
-    result = query_ollama_pdf([b"page1"], retries=1, retry_delay=0)
-    assert result.language == "en"
-    assert result.text == "Hello world"
-    # No page separator for a single page
-    assert "PAGE" not in result.text
-
-
-@responses_lib.activate
-def test_query_pdf_multi_page():
-    page2_payload = dict(MOCK_PAYLOAD, text="Page two text")
-    responses_lib.add(
-        responses_lib.POST,
-        OLLAMA_URL,
-        json=MOCK_RESPONSE,
-        status=200,
-    )
-    responses_lib.add(
-        responses_lib.POST,
-        OLLAMA_URL,
-        json={"message": {"content": json.dumps(page2_payload)}},
-        status=200,
-    )
-    result = query_ollama_pdf([b"page1", b"page2"], retries=1, retry_delay=0)
-    assert "═══ PAGE 1 ═══" in result.text
-    assert "═══ PAGE 2 ═══" in result.text
-    assert "Hello world" in result.text
-    assert "Page two text" in result.text
-    # Metadata comes from first page
-    assert result.language == "en"
-    assert result.description == "A white test image."
-
-
-# ---------------------------------------------------------------------------
-# _parse_response — direct unit tests
+# _parse_response — direct unit tests (re-exported from vision.py)
 # ---------------------------------------------------------------------------
 
 
@@ -171,5 +127,5 @@ def test_parse_response_strips_fences():
 
 
 def test_parse_response_raises_on_invalid_json():
-    with pytest.raises(ValueError, match="Malformed JSON"):
+    with pytest.raises(ValueError, match="Invalid model response"):
         _parse_response("not valid json {{{")
