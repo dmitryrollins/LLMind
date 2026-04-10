@@ -1,4 +1,4 @@
-"""Tests for llmind.reader — JPEG XMP reading (Task 7)."""
+"""Tests for llmind.reader — JPEG, PNG, and PDF XMP reading (Tasks 7 & 8)."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -55,3 +55,41 @@ def test_is_fresh_false_when_checksum_differs(jpeg_file: Path, sample_layer) -> 
     xmp = build_xmp([sample_layer])
     inject(jpeg_file, xmp)
     assert is_fresh(jpeg_file, "xyz") is False
+
+
+# ── PNG tests ────────────────────────────────────────────────────────────────
+
+def test_has_llmind_layer_true_after_inject_png(png_file: Path, sample_layer) -> None:
+    """After injecting valid llmind XMP into PNG, has_llmind_layer returns True."""
+    xmp = build_xmp([sample_layer])
+    inject(png_file, xmp)
+    assert has_llmind_layer(png_file) is True
+
+
+def test_read_returns_llmind_meta_after_inject_png(png_file: Path, sample_layer) -> None:
+    """read() returns a LLMindMeta instance after injecting valid llmind XMP into PNG."""
+    xmp = build_xmp([sample_layer])
+    inject(png_file, xmp)
+    result = read(png_file)
+    assert isinstance(result, LLMindMeta)
+    assert result.layer_count == 1
+    assert result.current.checksum == sample_layer.checksum
+
+
+# ── PDF tests ────────────────────────────────────────────────────────────────
+
+def test_has_llmind_layer_true_after_inject_pdf(pdf_file: Path, sample_layer) -> None:
+    """After injecting valid llmind XMP into PDF, has_llmind_layer returns True."""
+    xmp = build_xmp([sample_layer])
+    inject(pdf_file, xmp)
+    assert has_llmind_layer(pdf_file) is True
+
+
+def test_read_returns_llmind_meta_after_inject_pdf(pdf_file: Path, sample_layer) -> None:
+    """read() returns a LLMindMeta instance after injecting valid llmind XMP into PDF."""
+    xmp = build_xmp([sample_layer])
+    inject(pdf_file, xmp)
+    result = read(pdf_file)
+    assert isinstance(result, LLMindMeta)
+    assert result.layer_count == 1
+    assert result.current.checksum == sample_layer.checksum

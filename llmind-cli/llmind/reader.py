@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from llmind.injector import read_xmp_jpeg
+from llmind.injector import read_xmp_jpeg, read_xmp_pdf, read_xmp_png
 from llmind.models import LLMindMeta
 from llmind.xmp import parse_xmp
 
@@ -19,6 +19,10 @@ def _read_raw_xmp(path: Path) -> str | None:
     suffix = path.suffix.lower()
     if suffix in {".jpg", ".jpeg"}:
         return read_xmp_jpeg(path)
+    elif suffix == ".png":
+        return read_xmp_png(path)
+    elif suffix == ".pdf":
+        return read_xmp_pdf(path)
     raise ValueError(f"Unsupported format: {path.suffix}")
 
 
