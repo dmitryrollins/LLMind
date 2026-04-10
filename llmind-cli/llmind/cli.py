@@ -3,6 +3,7 @@ from rich.console import Console
 from rich.table import Table
 from pathlib import Path
 from llmind import __version__
+from llmind.embedder import EMBEDDING_DEFAULTS
 
 console = Console()
 
@@ -148,6 +149,180 @@ def strip(paths):
             console.print(f"[green]Stripped[/green] {path.name}")
         else:
             console.print(f"[yellow]Nothing to strip[/yellow] {path.name}")
+
+
+# ── embed ────────────────────────────────────────────────────────────────────
+
+@main.command()
+@click.argument("paths", nargs=-1, type=click.Path(exists=True, path_type=Path))
+@click.option(
+    "--provider",
+    type=click.Choice(["ollama", "openai", "voyage", "anthropic"]),
+    default="ollama",
+    show_default=True,
+    help="Embedding API provider. 'anthropic' routes to Voyage AI (Anthropic's recommended partner) and requires a Voyage API key from voyageai.com.",
+)
+@click.option("--model", default=None, help="Override embedding model (defaults to provider default).")
+@click.option("--api-key", "api_key", envvar="LLMIND_EMBED_API_KEY", default=None, help="API key (or set LLMIND_EMBED_API_KEY).")
+@click.option("--base-url", "base_url", default="http://localhost:11434/api/embeddings", show_default=True, help="Ollama base URL.")
+@click.option("--force", is_flag=True, default=False, help="Re-embed even if embedding already present.")
+def embed(paths, provider, model, api_key, base_url, force):
+    """Embed LLMind files — store a semantic vector inside each file's XMP.
+
+    Reads llmind:description from the XMP, generates an embedding with the
+    chosen provider, and writes the vector back as llmind:embedding.  The
+    original file content is unchanged.  Run once; search anytime.
+    """
+    from llmind.embedder import embed_text, patch_xmp_embedding, read_embedding_from_xmp
+    from llmind.injector import inject, read_xmp_jpeg, read_xmp_png, read_xmp_pdf
+    from llmind.reader import read as do_read
+    import time
+
+    resolved_model = model or EMBEDDING_DEFAULTS.get(provider, "")
+
+    for path in paths:
+        t0 = time.monotonic()
+        suffix = path.suffix.lower()
+
+        # Read current XMP string from the file
+        if suffix in {".jpg", ".jpeg"}:
+            xmp_string = read_xmp_jpeg(path)
+        elif suffix == ".png":
+            xmp_string = read_xmp_png(path)
+        elif suffix == ".pdf":
+            xmp_string = read_xmp_pdf(path)
+        else:
+            console.print(f"[yellow]SKIP[/yellow] {path.name} (unsupported format)")
+            continue
+
+        if xmp_string is None:
+            console.print(f"[yellow]SKIP[/yellow] {path.name} (no LLMind layer — enrich first)")
+            continue
+
+        if not force and read_embedding_from_xmp(xmp_string) is not None:
+            console.print(f"[yellow]SKIP[/yellow] {path.name} (already embedded; use --force to redo)")
+            continue
+
+        # Extract description from the parsed layer
+        meta = do_read(path)
+        if meta is None:
+            console.print(f"[red]ERR[/red]  {path.name}: no LLMind metadata")
+            continue
+
+        text_to_embed = meta.current.description or meta.current.text
+        if not text_to_embed.strip():
+            console.print(f"[yellow]SKIP[/yellow] {path.name} (empty description)")
+            continue
+
+        try:
+            vector = embed_text(text_to_embed, provider=provider, model=model, api_key=api_key, base_url=base_url)
+        except Exception as exc:
+            console.print(f"[red]ERR[/red]  {path.name}: {exc}")
+            continue
+
+        # Patch embedding into the existing XMP and re-inject
+        patched_xmp = patch_xmp_embedding(xmp_string, vector, resolved_model)
+        try:
+            inject(path, patched_xmp)
+        except Exception as exc:
+            console.print(f"[red]ERR[/red]  {path.name}: inject failed: {exc}")
+            continue
+
+        elapsed = time.monotonic() - t0
+        console.print(f"[green]OK[/green]   {path.name} dim={len(vector)} ({elapsed:.1f}s) [{provider}/{resolved_model}]")
+
+
+# ── search ────────────────────────────────────────────────────────────────────
+
+@main.command()
+@click.argument("query")
+@click.argument("paths", nargs=-1, type=click.Path(exists=True, path_type=Path))
+@click.option(
+    "--provider",
+    type=click.Choice(["ollama", "openai", "voyage", "anthropic"]),
+    default="ollama",
+    show_default=True,
+    help="Embedding API provider (must match the one used for embed). 'anthropic' routes to Voyage AI.",
+)
+@click.option("--model", default=None, help="Override embedding model.")
+@click.option("--api-key", "api_key", envvar="LLMIND_EMBED_API_KEY", default=None)
+@click.option("--base-url", "base_url", default="http://localhost:11434/api/embeddings", show_default=True)
+@click.option("--top", "top_k", default=10, show_default=True, help="Number of results to show.")
+@click.option("--threshold", default=0.0, show_default=True, help="Minimum cosine similarity to include.")
+def search(query, paths, provider, model, api_key, base_url, top_k, threshold):
+    """Semantic search across LLMind files using pre-computed embeddings.
+
+    Embeds QUERY once using the chosen provider, then compares it against the
+    llmind:embedding vector stored in each file's XMP metadata.  No database
+    required — the vector lives inside the file.
+
+    Examples:
+
+        llmind search "invoice from apple" *.llmind.jpg
+
+        llmind search "mountain landscape" ~/Photos/*.llmind.png --top 5
+    """
+    from llmind.embedder import embed_text, cosine_similarity, read_embedding_from_xmp
+    from llmind.injector import read_xmp_jpeg, read_xmp_png, read_xmp_pdf
+
+    if not paths:
+        console.print("[yellow]No files given.[/yellow]")
+        return
+
+    # Embed the query
+    try:
+        with console.status("Embedding query..."):
+            query_vec = embed_text(query, provider=provider, model=model, api_key=api_key, base_url=base_url)
+    except Exception as exc:
+        console.print(f"[red]Error embedding query:[/red] {exc}")
+        return
+
+    results: list[tuple[float, Path]] = []
+    skipped = 0
+
+    for path in paths:
+        suffix = path.suffix.lower()
+        if suffix in {".jpg", ".jpeg"}:
+            xmp_string = read_xmp_jpeg(path)
+        elif suffix == ".png":
+            xmp_string = read_xmp_png(path)
+        elif suffix == ".pdf":
+            xmp_string = read_xmp_pdf(path)
+        else:
+            skipped += 1
+            continue
+
+        if xmp_string is None:
+            skipped += 1
+            continue
+
+        vec = read_embedding_from_xmp(xmp_string)
+        if vec is None:
+            skipped += 1
+            continue
+
+        score = cosine_similarity(query_vec, vec)
+        if score >= threshold:
+            results.append((score, path))
+
+    results.sort(key=lambda x: x[0], reverse=True)
+    results = results[:top_k]
+
+    if not results:
+        console.print("[yellow]No matching files found.[/yellow]")
+        if skipped:
+            console.print(f"[dim]{skipped} file(s) had no embedding — run `llmind embed` first.[/dim]")
+        return
+
+    table = Table(title=f'Search: "{query}"', show_lines=False)
+    table.add_column("Score", style="cyan", width=8, justify="right")
+    table.add_column("File")
+    for score, path in results:
+        table.add_row(f"{score:.4f}", str(path))
+    console.print(table)
+
+    if skipped:
+        console.print(f"[dim]{skipped} file(s) skipped (no embedding).[/dim]")
 
 
 # ── watch ─────────────────────────────────────────────────────────────────────

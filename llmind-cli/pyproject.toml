@@ -24,6 +24,7 @@ llmind = "llmind.cli:main"
 dev = ["pytest>=7.0", "pytest-cov>=4.0", "responses>=0.23"]
 anthropic = ["anthropic>=0.40.0"]
 openai = ["openai>=1.50.0"]
+embeddings = ["voyageai>=0.2.0"]
 all-providers = ["anthropic>=0.40.0", "openai>=1.50.0"]
 
 [tool.pytest.ini_options]
