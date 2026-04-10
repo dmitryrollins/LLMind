@@ -2,10 +2,20 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 
+from llmind.crypto import (
+    derive_key_id,
+    generate_key,
+    load_key_file,
+    save_key_file,
+    sha256_file,
+    sign_layer,
+    verify_signature,
+)
 from llmind.models import KeyFile
 
 
@@ -14,9 +24,6 @@ from llmind.models import KeyFile
 # ---------------------------------------------------------------------------
 
 def _make_key_file(file: str = "sample.txt") -> KeyFile:
-    from llmind.crypto import generate_key, derive_key_id
-    from datetime import datetime, timezone
-
     key = generate_key()
     key_id = derive_key_id(key)
     return KeyFile(
@@ -32,16 +39,12 @@ def _make_key_file(file: str = "sample.txt") -> KeyFile:
 # ---------------------------------------------------------------------------
 
 def test_generate_key_length():
-    from llmind.crypto import generate_key
-
     key = generate_key()
     assert len(key) == 64
     assert all(c in "0123456789abcdef" for c in key)
 
 
 def test_generate_key_uniqueness():
-    from llmind.crypto import generate_key
-
     assert generate_key() != generate_key()
 
 
@@ -50,8 +53,6 @@ def test_generate_key_uniqueness():
 # ---------------------------------------------------------------------------
 
 def test_derive_key_id_length():
-    from llmind.crypto import generate_key, derive_key_id
-
     key = generate_key()
     key_id = derive_key_id(key)
     assert len(key_id) == 16
@@ -59,8 +60,6 @@ def test_derive_key_id_length():
 
 
 def test_derive_key_id_deterministic():
-    from llmind.crypto import generate_key, derive_key_id
-
     key = generate_key()
     assert derive_key_id(key) == derive_key_id(key)
 
@@ -70,8 +69,6 @@ def test_derive_key_id_deterministic():
 # ---------------------------------------------------------------------------
 
 def test_sha256_file_known_value(tmp_path: Path):
-    from llmind.crypto import sha256_file
-
     content = b"hello world"
     f = tmp_path / "test.txt"
     f.write_bytes(content)
@@ -85,8 +82,6 @@ def test_sha256_file_known_value(tmp_path: Path):
 # ---------------------------------------------------------------------------
 
 def test_sign_layer_length():
-    from llmind.crypto import generate_key, sign_layer
-
     key = generate_key()
     sig = sign_layer(key, {"a": 1, "b": "two"})
     assert len(sig) == 64
@@ -94,16 +89,12 @@ def test_sign_layer_length():
 
 
 def test_sign_layer_deterministic():
-    from llmind.crypto import generate_key, sign_layer
-
     key = generate_key()
     layer = {"version": 1, "text": "hello"}
     assert sign_layer(key, layer) == sign_layer(key, layer)
 
 
 def test_verify_signature_correct_key():
-    from llmind.crypto import generate_key, sign_layer, verify_signature
-
     key = generate_key()
     layer = {"version": 1, "text": "hello"}
     sig = sign_layer(key, layer)
@@ -111,8 +102,6 @@ def test_verify_signature_correct_key():
 
 
 def test_verify_signature_wrong_key():
-    from llmind.crypto import generate_key, sign_layer, verify_signature
-
     key1 = generate_key()
     key2 = generate_key()
     layer = {"version": 1, "text": "hello"}
@@ -125,8 +114,6 @@ def test_verify_signature_wrong_key():
 # ---------------------------------------------------------------------------
 
 def test_save_load_key_file_roundtrip(tmp_path: Path):
-    from llmind.crypto import save_key_file, load_key_file
-
     kf = _make_key_file("roundtrip.txt")
     saved_path = save_key_file(tmp_path, kf)
     loaded = load_key_file(saved_path)
@@ -139,8 +126,6 @@ def test_save_load_key_file_roundtrip(tmp_path: Path):
 
 
 def test_save_key_file_creates_gitignore(tmp_path: Path):
-    from llmind.crypto import save_key_file
-
     kf = _make_key_file("file.txt")
     save_key_file(tmp_path, kf)
 
@@ -150,8 +135,6 @@ def test_save_key_file_creates_gitignore(tmp_path: Path):
 
 
 def test_save_key_file_gitignore_not_duplicated(tmp_path: Path):
-    from llmind.crypto import save_key_file
-
     kf1 = _make_key_file("file1.txt")
     kf2 = _make_key_file("file2.txt")
     save_key_file(tmp_path, kf1)
@@ -163,8 +146,6 @@ def test_save_key_file_gitignore_not_duplicated(tmp_path: Path):
 
 
 def test_save_key_file_gitignore_no_double_blank_line(tmp_path: Path):
-    from llmind.crypto import save_key_file
-
     gitignore = tmp_path / ".gitignore"
     gitignore.write_text("*.pyc\n")
 
@@ -174,3 +155,10 @@ def test_save_key_file_gitignore_no_double_blank_line(tmp_path: Path):
     content = gitignore.read_text()
     assert "\n\n" not in content
     assert content == "*.pyc\n.llmind-keys/\n"
+
+
+def test_load_key_file_missing_field_raises(tmp_path: Path):
+    broken = tmp_path / "bad.key"
+    broken.write_text(json.dumps({"key_id": "abc"}))
+    with pytest.raises(ValueError, match="missing field"):
+        load_key_file(broken)

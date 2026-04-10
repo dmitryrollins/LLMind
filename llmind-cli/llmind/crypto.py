@@ -28,7 +28,7 @@ def sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def sign_layer(creation_key: str, layer_dict: dict) -> str:
+def sign_layer(creation_key: str, layer_dict: dict[str, object]) -> str:
     """Return HMAC-SHA256(creation_key, json.dumps(layer_dict, sort_keys=True))."""
     message = json.dumps(layer_dict, sort_keys=True).encode()
     return hmac.new(
@@ -38,7 +38,7 @@ def sign_layer(creation_key: str, layer_dict: dict) -> str:
     ).hexdigest()
 
 
-def verify_signature(creation_key: str, layer_dict: dict, signature: str) -> bool:
+def verify_signature(creation_key: str, layer_dict: dict[str, object], signature: str) -> bool:
     """Constant-time HMAC comparison. Returns True if valid."""
     expected = sign_layer(creation_key, layer_dict)
     return hmac.compare_digest(expected, signature)
@@ -72,13 +72,16 @@ def save_key_file(output_dir: Path, key_file: KeyFile) -> Path:
 def load_key_file(path: Path) -> KeyFile:
     """Read JSON from path, return KeyFile dataclass."""
     data = json.loads(path.read_text())
-    return KeyFile(
-        key_id=data["key_id"],
-        creation_key=data["creation_key"],
-        created=data["created"],
-        file=data["file"],
-        note=data["note"],
-    )
+    try:
+        return KeyFile(
+            key_id=data["key_id"],
+            creation_key=data["creation_key"],
+            created=data["created"],
+            file=data["file"],
+            note=data["note"],
+        )
+    except KeyError as exc:
+        raise ValueError(f"Malformed key file {path}: missing field {exc}") from exc
 
 
 # ---------------------------------------------------------------------------
