@@ -160,3 +160,17 @@ def test_save_key_file_gitignore_not_duplicated(tmp_path: Path):
     gitignore = tmp_path / ".gitignore"
     content = gitignore.read_text()
     assert content.count(".llmind-keys/") == 1
+
+
+def test_save_key_file_gitignore_no_double_blank_line(tmp_path: Path):
+    from llmind.crypto import save_key_file
+
+    gitignore = tmp_path / ".gitignore"
+    gitignore.write_text("*.pyc\n")
+
+    kf = _make_key_file("file.txt")
+    save_key_file(tmp_path, kf)
+
+    content = gitignore.read_text()
+    assert "\n\n" not in content
+    assert content == "*.pyc\n.llmind-keys/\n"

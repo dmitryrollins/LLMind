@@ -77,7 +77,7 @@ def load_key_file(path: Path) -> KeyFile:
         creation_key=data["creation_key"],
         created=data["created"],
         file=data["file"],
-        note=data.get("note", "Required to modify or delete layers. Not recoverable."),
+        note=data["note"],
     )
 
 
@@ -92,6 +92,6 @@ def _update_gitignore(output_dir: Path) -> None:
     if gitignore_path.exists():
         content = gitignore_path.read_text()
         if ".llmind-keys/" not in content:
-            gitignore_path.write_text(content + "\n" + entry)
+            gitignore_path.write_text(content.rstrip("\n") + "\n" + entry)
     else:
         gitignore_path.write_text(entry)
