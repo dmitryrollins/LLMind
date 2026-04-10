@@ -1,9 +1,0 @@
-pyproject.toml
-llmind/__init__.py
-llmind/cli.py
-llmind_cli.egg-info/PKG-INFO
-llmind_cli.egg-info/SOURCES.txt
-llmind_cli.egg-info/dependency_links.txt
-llmind_cli.egg-info/entry_points.txt
-llmind_cli.egg-info/requires.txt
-llmind_cli.egg-info/top_level.txt
