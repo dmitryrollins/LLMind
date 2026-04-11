@@ -1,6 +1,15 @@
 import { useState, useRef, useCallback } from "react";
 
 const STEPS = ["upload", "configure", "processing", "complete"];
+const IS_LOCAL = typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+
+const EMBED_DEFAULTS = {
+  ollama: "nomic-embed-text",
+  openai: "text-embedding-3-small",
+  voyage: "voyage-3.5",
+  anthropic: "voyage-3.5",
+};
 
 // Crypto utils for LLMind key generation and signing
 async function generateKey() {
@@ -140,6 +149,71 @@ function crc32(buf) {
   return (crc ^ 0xFFFFFFFF) >>> 0;
 }
 
+// Normalise a vector to unit length
+function normaliseVec(vec) {
+  const mag = Math.sqrt(vec.reduce((s, x) => s + x * x, 0));
+  return mag === 0 ? vec : vec.map(x => x / mag);
+}
+
+// Generate embedding from text using the chosen provider
+async function embedText(text, provider, apiKey) {
+  const actualProvider = provider === "anthropic" ? "voyage" : provider;
+  const model = EMBED_DEFAULTS[provider];
+
+  if (actualProvider === "openai") {
+    if (!apiKey) throw new Error("API key required for OpenAI");
+    const resp = await fetch("https://api.openai.com/v1/embeddings", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model, input: text }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error?.message || "OpenAI embedding failed");
+    return { vector: normaliseVec(data.data[0].embedding), model };
+  }
+
+  if (actualProvider === "voyage") {
+    if (!apiKey) throw new Error("Voyage API key required (get one free at voyageai.com). Note: your Anthropic sk-ant-... key will NOT work here.");
+    const resp = await fetch("https://api.voyageai.com/v1/embeddings", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model, input: [text], input_type: "document" }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || "Voyage embedding failed");
+    return { vector: normaliseVec(data.data[0].embedding), model };
+  }
+
+  if (actualProvider === "ollama") {
+    const resp = await fetch("http://localhost:11434/api/embeddings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model, prompt: text }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error("Ollama embedding failed — is Ollama running locally?");
+    const vec = data.embedding || data.embeddings?.[0];
+    if (!vec) throw new Error("Ollama returned no embedding vector");
+    return { vector: normaliseVec(vec), model };
+  }
+
+  throw new Error(`Unknown embedding provider: ${provider}`);
+}
+
+// Patch llmind:embedding + llmind:embedding_model into an existing XMP string
+function patchXmpEmbedding(xmpString, vector, model) {
+  const vecJson = JSON.stringify(vector);
+  let patched = xmpString
+    .replace(/\s*llmind:embedding="[^"]*"/g, "")
+    .replace(/\s*llmind:embedding_model="[^"]*"/g, "");
+
+  const tagStart = patched.indexOf("rdf:Description");
+  if (tagStart === -1) return xmpString;
+  const closeAngle = patched.indexOf(">", tagStart);
+  const embedAttrs = `\n    llmind:embedding="${vecJson}"\n    llmind:embedding_model="${model}"`;
+  return patched.slice(0, closeAngle) + embedAttrs + patched.slice(closeAngle);
+}
+
 // Simple PDF XMP injection (appends XMP as cross-reference update)
 function injectPDF(original, xmpXml) {
   const dec = new TextDecoder();
@@ -195,6 +269,11 @@ export default function LLMindConverter() {
   const [creationKey, setCreationKey] = useState(null);
   const [keyId, setKeyId] = useState(null);
   const [dragOver, setDragOver] = useState(false);
+  const [embedProvider, setEmbedProvider] = useState("openai");
+  const [embedApiKey, setEmbedApiKey] = useState("");
+  const [isEmbedding, setIsEmbedding] = useState(false);
+  const [embeddingDone, setEmbeddingDone] = useState(false);
+  const [embedError, setEmbedError] = useState("");
   const fileRef = useRef();
 
   const handleFile = useCallback((f) => {
@@ -352,6 +431,7 @@ export default function LLMindConverter() {
         blob: new Blob([enriched], { type: file.type }),
         name: outName,
         layer,
+        xmp,
         originalSize: fileData.length,
         enrichedSize: enriched.length,
         xmpSize: new TextEncoder().encode(xmp).length,
@@ -365,6 +445,38 @@ export default function LLMindConverter() {
       setStep(1);
     } finally {
       clearInterval(interval);
+    }
+  };
+
+  const generateEmbedding = async () => {
+    if (!result || isEmbedding) return;
+    setEmbedError("");
+    setIsEmbedding(true);
+    try {
+      const text = result.layer.description || result.layer.text;
+      if (!text?.trim()) throw new Error("No description or text to embed");
+      const { vector, model } = await embedText(text, embedProvider, embedApiKey);
+      const patched = patchXmpEmbedding(result.xmp, vector, model);
+      let enriched;
+      if (file.type === "image/jpeg") {
+        enriched = injectJPEG(fileData, patched);
+      } else if (file.type === "image/png") {
+        enriched = injectPNG(fileData, patched);
+      } else {
+        enriched = injectPDF(fileData, patched);
+      }
+      setResult(prev => ({
+        ...prev,
+        blob: new Blob([enriched], { type: file.type }),
+        xmp: patched,
+        enrichedSize: enriched.length,
+        embedding: { dim: vector.length, model },
+      }));
+      setEmbeddingDone(true);
+    } catch (err) {
+      setEmbedError(err.message || "Embedding failed");
+    } finally {
+      setIsEmbedding(false);
     }
   };
 
@@ -400,6 +512,7 @@ export default function LLMindConverter() {
     setStep(0); setFile(null); setFileData(null); setPreview(null);
     setResult(null); setCreationKey(null); setKeyId(null);
     setError(""); setStatus(""); setStatusIdx(0);
+    setEmbeddingDone(false); setEmbedError(""); setIsEmbedding(false);
   };
 
   return (
@@ -663,6 +776,83 @@ export default function LLMindConverter() {
               <div style={{ fontSize: 10, color: "#555", lineHeight: 1.5 }}>
                 Download and store securely. Without this key, layers cannot be modified or deleted — only appended. This key is not stored anywhere and cannot be recovered.
               </div>
+            </div>
+
+            {/* Embedding section */}
+            <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.06)", padding: 20, marginBottom: 24 }}>
+              <div style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 }}>
+                Semantic embedding <span style={{ color: "#555", marginLeft: 8, textTransform: "none", letterSpacing: 0, fontSize: 10 }}>— optional</span>
+              </div>
+              <div style={{ fontSize: 11, color: "#555", marginBottom: 16, lineHeight: 1.5 }}>
+                Stores a vector inside the file's XMP as <code style={{ color: "#888" }}>llmind:embedding</code>. Enables cosine-similarity search without re-running vision inference.
+              </div>
+
+              <label style={{ fontSize: 10, color: "#555", letterSpacing: 1, textTransform: "uppercase", display: "block", marginBottom: 8 }}>Provider</label>
+              <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+                {[
+                  { id: "openai", label: "OpenAI", sub: "text-embedding-3-small" },
+                  { id: "voyage", label: "Voyage AI", sub: "voyage-3.5" },
+                  { id: "anthropic", label: "Anthropic", sub: "→ Voyage AI" },
+                  ...(IS_LOCAL ? [{ id: "ollama", label: "Ollama", sub: "local · no key" }] : []),
+                ].map(p => (
+                  <button key={p.id} onClick={() => !embeddingDone && setEmbedProvider(p.id)}
+                    style={{
+                      flex: "1 1 auto", padding: "10px 8px", borderRadius: 8,
+                      border: embedProvider === p.id ? "1.5px solid #f97316" : "1px solid rgba(255,255,255,0.06)",
+                      background: embedProvider === p.id ? "rgba(249,115,22,0.06)" : "rgba(255,255,255,0.02)",
+                      cursor: embeddingDone ? "default" : "pointer", textAlign: "left",
+                    }}>
+                    <div style={{ fontSize: 11, color: embedProvider === p.id ? "#f97316" : "#888", fontWeight: 500 }}>{p.label}</div>
+                    <div style={{ fontSize: 9, color: "#555", marginTop: 2 }}>{p.sub}</div>
+                  </button>
+                ))}
+              </div>
+
+              {embedProvider !== "ollama" && !embeddingDone && (
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ fontSize: 10, color: "#555", letterSpacing: 1, textTransform: "uppercase", display: "block", marginBottom: 8 }}>
+                    {embedProvider === "openai" ? "OpenAI API key (sk-...)" : "Voyage AI key (pa-...) — not your Anthropic key"}
+                  </label>
+                  <input
+                    type="password"
+                    value={embedApiKey}
+                    onChange={(e) => setEmbedApiKey(e.target.value)}
+                    placeholder={embedProvider === "openai" ? "sk-..." : "pa-..."}
+                    style={{
+                      width: "100%", padding: "12px 16px", borderRadius: 8,
+                      border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)",
+                      color: "#fff", fontSize: 13, fontFamily: "'JetBrains Mono', monospace",
+                      outline: "none", boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+              )}
+
+              {embedProvider === "ollama" && !embeddingDone && (
+                <div style={{ fontSize: 10, color: "#555", marginBottom: 12, lineHeight: 1.5 }}>
+                  Requires Ollama running at <code style={{ color: "#777" }}>localhost:11434</code> with <code style={{ color: "#777" }}>nomic-embed-text</code> pulled.
+                </div>
+              )}
+
+              {embedError && <div style={{ color: "#ef4444", fontSize: 11, marginBottom: 10 }}>{embedError}</div>}
+
+              {embeddingDone && result?.embedding && (
+                <div style={{ fontSize: 11, color: "#22c55e", marginBottom: 10 }}>
+                  ✓ Embedding stored — dim={result.embedding.dim} · model={result.embedding.model}
+                </div>
+              )}
+
+              <button onClick={generateEmbedding} disabled={isEmbedding || embeddingDone}
+                style={{
+                  width: "100%", padding: "12px", borderRadius: 8,
+                  background: embeddingDone ? "rgba(34,197,94,0.06)" : "rgba(255,255,255,0.04)",
+                  border: embeddingDone ? "1px solid rgba(34,197,94,0.2)" : "1px solid rgba(255,255,255,0.08)",
+                  color: embeddingDone ? "#22c55e" : (isEmbedding ? "#666" : "#999"),
+                  fontSize: 12, cursor: embeddingDone || isEmbedding ? "default" : "pointer",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                }}>
+                {isEmbedding ? "Generating embedding..." : embeddingDone ? `✓ Embedded (dim=${result.embedding?.dim})` : "Generate & embed vector"}
+              </button>
             </div>
 
             {/* Download buttons */}
