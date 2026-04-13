@@ -1,0 +1,8 @@
+{"type":"server-started","port":61335,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:61335","screen_dir":"/Users/dzmitrytryhubenka/APP DEV/LLMind/.superpowers/brainstorm/35007-1776082957/content","state_dir":"/Users/dzmitrytryhubenka/APP DEV/LLMind/.superpowers/brainstorm/35007-1776082957/state"}
+{"type":"screen-added","file":"/Users/dzmitrytryhubenka/APP DEV/LLMind/.superpowers/brainstorm/35007-1776082957/content/app-style.html"}
+{"type":"screen-added","file":"/Users/dzmitrytryhubenka/APP DEV/LLMind/.superpowers/brainstorm/35007-1776082957/content/waiting-1.html"}
+{"type":"screen-added","file":"/Users/dzmitrytryhubenka/APP DEV/LLMind/.superpowers/brainstorm/35007-1776082957/content/full-design.html"}
+{"type":"screen-added","file":"/Users/dzmitrytryhubenka/APP DEV/LLMind/.superpowers/brainstorm/35007-1776082957/content/model-picker.html"}
+{"type":"screen-added","file":"/Users/dzmitrytryhubenka/APP DEV/LLMind/.superpowers/brainstorm/35007-1776082957/content/badge-icons.html"}
+{"type":"screen-added","file":"/Users/dzmitrytryhubenka/APP DEV/LLMind/.superpowers/brainstorm/35007-1776082957/content/waiting-2.html"}
+{"type":"server-stopped","reason":"idle timeout"}

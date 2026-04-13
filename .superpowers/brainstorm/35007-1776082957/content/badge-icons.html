@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0f0f0f; color: #e0e0e0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 32px; }
+h2 { font-size: 17px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+.sub { color: #555; font-size: 13px; margin-bottom: 32px; }
+.row { margin-bottom: 32px; }
+.row-label { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: #444; margin-bottom: 12px; }
+
+.bar { background: rgba(30,30,30,.97); border-radius: 10px; padding: 0 14px; height: 52px; display: flex; align-items: center; gap: 8px; border: 1px solid #2a2a2a; width: 500px; }
+.bar-text { flex: 1; font-size: 16px; color: #e8e8e8; }
+.esc { color: #333; font-size: 11px; }
+
+/* icon badges */
+.ibadge { display: flex; align-items: center; gap: 5px; border-radius: 6px; padding: 4px 8px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid transparent; }
+.ibadge svg { flex-shrink: 0; }
+
+/* Option A: symbol + one word */
+.a-mode { background: #1a2e1a; color: #4ade80; border-color: #2a3e2a; }
+.a-model { background: #1a1a2e; color: #818cf8; border-color: #2a2a4a; }
+
+/* Option B: icon only */
+.b-mode { background: #1a2e1a; color: #4ade80; border-color: #2a3e2a; padding: 5px 7px; }
+.b-model { background: #1a1a2e; color: #818cf8; border-color: #2a2a4a; padding: 5px 7px; }
+
+/* Option C: dot + short abbrev */
+.c-mode { background: #1a2e1a; color: #4ade80; border-color: #2a3e2a; }
+.c-model { background: #1a1a2e; color: #818cf8; border-color: #2a2a4a; }
+.dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.dot-green { background: #4ade80; }
+.dot-indigo { background: #818cf8; }
+</style>
+</head>
+<body>
+
+<h2>Badge icon options</h2>
+<p class="sub">Pick the style that feels right for the search bar</p>
+
+<!-- Option A: icon + short word -->
+<div class="row">
+  <div class="row-label">A — icon + short label</div>
+  <div class="bar">
+    <span style="color:#555;font-size:16px">⌕</span>
+    <span class="bar-text">wedding ring</span>
+    <span class="ibadge a-mode">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1L7.5 4.5H11L8 7L9 11L6 9L3 11L4 7L1 4.5H4.5L6 1Z" fill="#4ade80" opacity=".8"/></svg>
+      hybrid
+    </span>
+    <span class="ibadge a-model">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="4" stroke="#818cf8" stroke-width="1.5"/><circle cx="6" cy="6" r="1.5" fill="#818cf8"/></svg>
+      nomic
+    </span>
+    <span class="esc">ESC</span>
+  </div>
+</div>
+
+<!-- Option B: icons only -->
+<div class="row">
+  <div class="row-label">B — icons only (tooltip on hover)</div>
+  <div class="bar">
+    <span style="color:#555;font-size:16px">⌕</span>
+    <span class="bar-text">wedding ring</span>
+    <span class="ibadge b-mode" title="Hybrid search">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M7 1.5L8.8 5.2H13L9.8 7.8L11 12L7 9.5L3 12L4.2 7.8L1 5.2H5.2L7 1.5Z" fill="#4ade80" opacity=".85"/>
+      </svg>
+    </span>
+    <span class="ibadge b-model" title="ollama / nomic-embed-text">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <circle cx="7" cy="7" r="5" stroke="#818cf8" stroke-width="1.5"/>
+        <circle cx="7" cy="7" r="2" fill="#818cf8"/>
+        <path d="M7 2V4M7 10V12M2 7H4M10 7H12" stroke="#818cf8" stroke-width="1.2" stroke-linecap="round"/>
+      </svg>
+    </span>
+    <span class="esc">ESC</span>
+  </div>
+</div>
+
+<!-- Option C: colored dot + abbreviation -->
+<div class="row">
+  <div class="row-label">C — dot + abbreviation (recommended)</div>
+  <div class="bar">
+    <span style="color:#555;font-size:16px">⌕</span>
+    <span class="bar-text">wedding ring</span>
+    <span class="ibadge c-mode">
+      <div class="dot dot-green"></div>
+      ⚡
+    </span>
+    <span class="ibadge c-model">
+      <div class="dot dot-indigo"></div>
+      🦙 nomic
+    </span>
+    <span class="esc">ESC</span>
+  </div>
+</div>
+
+<!-- Bonus: all modes shown -->
+<div class="row">
+  <div class="row-label">All mode states (C style)</div>
+  <div style="display:flex;flex-direction:column;gap:10px;">
+    <div class="bar">
+      <span style="color:#555;font-size:16px">⌕</span>
+      <span class="bar-text" style="color:#777">query…</span>
+      <span class="ibadge c-mode"><div class="dot dot-green"></div>⚡ hybrid</span>
+      <span class="ibadge c-model"><div class="dot dot-indigo"></div>🦙 nomic</span>
+      <span class="esc">ESC</span>
+    </div>
+    <div class="bar">
+      <span style="color:#555;font-size:16px">⌕</span>
+      <span class="bar-text" style="color:#777">query…</span>
+      <span class="ibadge" style="background:#1a1e2e;color:#60a5fa;border-color:#2a2e4a"><div class="dot" style="background:#60a5fa"></div>〈v〉 vector</span>
+      <span class="ibadge c-model"><div class="dot dot-indigo"></div>🦙 nomic</span>
+      <span class="esc">ESC</span>
+    </div>
+    <div class="bar">
+      <span style="color:#555;font-size:16px">⌕</span>
+      <span class="bar-text" style="color:#777">query…</span>
+      <span class="ibadge" style="background:#2e1a1a;color:#f87171;border-color:#4a2a2a"><div class="dot" style="background:#f87171"></div>Aa keyword</span>
+      <span class="ibadge c-model"><div class="dot dot-indigo"></div>🦙 nomic</span>
+      <span class="esc">ESC</span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
