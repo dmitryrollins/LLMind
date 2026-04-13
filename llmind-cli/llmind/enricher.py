@@ -30,6 +30,31 @@ from llmind.safety import is_safe_file
 from llmind.xmp import build_xmp, layer_to_dict
 
 
+def is_already_enriched_file(path: Path) -> bool:
+    """Return True if *path* is already a .llmind output file.
+
+    Matches both ``photo.llmind.jpg`` (stem ends with ``.llmind``) and
+    any file whose extension is literally ``.llmind``.
+    """
+    return path.stem.endswith(".llmind") or path.suffix == ".llmind"
+
+
+def _skip_result(path: Path, error: str | None = None) -> EnrichResult:
+    return EnrichResult(
+        path=path, success=False, skipped=True,
+        version=None, regions=0, figures=0, tables=0,
+        elapsed=0.0, error=error,
+    )
+
+
+def _error_result(path: Path, error: str, elapsed: float) -> EnrichResult:
+    return EnrichResult(
+        path=path, success=False, skipped=False,
+        version=None, regions=0, figures=0, tables=0,
+        elapsed=elapsed, error=error,
+    )
+
+
 def enrich(
     path: Path,
     model: str | None = None,
@@ -74,6 +99,94 @@ def enrich(
         )
 
 
+def reenrich(
+    path: Path,
+    model: str | None = None,
+    base_url: str = "http://localhost:11434/api/chat",
+    creation_key: str | None = None,
+    generator: str = "llmind-cli/0.1.0",
+    force: bool = False,
+    provider: str = "ollama",
+) -> EnrichResult:
+    """Re-enrich an already-enriched .llmind file in-place (no rename).
+
+    Args:
+        path:  Must be a ``.llmind.*`` file. Raises ValueError otherwise.
+        force: If True, re-enrich even when the file is already fresh.
+
+    Returns:
+        EnrichResult describing the outcome.
+    """
+    start = time.monotonic()
+    try:
+        return _reenrich(path, model, base_url, creation_key, generator, force, start, provider)
+    except Exception as exc:
+        return _error_result(path, str(exc), time.monotonic() - start)
+
+
+def _reenrich(
+    path: Path,
+    model: str | None,
+    base_url: str,
+    creation_key: str | None,
+    generator: str,
+    force: bool,
+    start: float,
+    provider: str = "ollama",
+) -> EnrichResult:
+    if not is_already_enriched_file(path):
+        raise ValueError(
+            f"reenrich() requires a .llmind file; got {path.name!r}. Use enrich() for new files."
+        )
+    if not is_safe_file(path):
+        raise ValueError(f"Unsafe file: {path}")
+
+    checksum = sha256_file(path)
+    if not force and is_fresh(path, checksum):
+        return _skip_result(path)
+
+    suffix = path.suffix.lower()
+    if suffix == ".pdf":
+        image_pages = _pdf_to_images(path)
+        extraction = query_pdf(image_pages, provider=provider, model=model, base_url=base_url)
+    else:
+        extraction = query_image(path.read_bytes(), provider=provider, model=model, base_url=base_url)
+
+    resolved_model = model or PROVIDER_DEFAULTS.get(provider, "")
+    existing_meta = read_meta(path)
+    existing_layers: list[Layer] = list(existing_meta.layers) if existing_meta else []
+    version = len(existing_layers) + 1
+    timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+    layer = Layer(
+        version=version, timestamp=timestamp,
+        generator=generator, generator_model=resolved_model,
+        checksum=checksum, language=extraction.language,
+        description=extraction.description, text=extraction.text,
+        structure=extraction.structure,
+        key_id=derive_key_id(creation_key) if creation_key else "",
+        signature=None,
+    )
+    if creation_key:
+        layer_dict = layer_to_dict(layer, include_signature=False)
+        sig = sign_layer(creation_key, layer_dict)
+        layer = dataclasses.replace(layer, signature=sig)
+
+    all_layers = existing_layers + [layer]
+    xmp = build_xmp(all_layers)
+    inject(path, xmp)  # in-place: no rename
+
+    elapsed = time.monotonic() - start
+    structure = extraction.structure
+    return EnrichResult(
+        path=path, success=True, skipped=False, version=version,
+        regions=len(structure.get("regions", [])),
+        figures=len(structure.get("figures", [])),
+        tables=len(structure.get("tables", [])),
+        elapsed=elapsed, error=None,
+    )
+
+
 def _enrich(
     path: Path,
     model: str | None,
@@ -85,6 +198,9 @@ def _enrich(
     provider: str = "ollama",
 ) -> EnrichResult:
     """Internal enrichment logic — may raise; caller wraps exceptions."""
+    if is_already_enriched_file(path):
+        return _skip_result(path, error="already-enriched")
+
     if not is_safe_file(path):
         raise ValueError(f"Unsafe file: {path}")
 

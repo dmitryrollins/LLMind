@@ -34,15 +34,24 @@ def _strip_fences(text: str) -> str:
     return text.strip()
 
 
+def _coerce_str(value: object, default: str = "") -> str:
+    """Coerce a model response value to str — handles lists returned by some Ollama models."""
+    if value is None:
+        return default
+    if isinstance(value, list):
+        return "\n".join(str(item) for item in value)
+    return str(value)
+
+
 def _parse_response(content: str) -> ExtractionResult:
     """Parse model JSON response into ExtractionResult. Raises ValueError on bad JSON."""
     try:
         data = json.loads(_strip_fences(content))
         return ExtractionResult(
-            language=data.get("language", "en"),
-            description=data.get("description", ""),
-            text=data.get("text", ""),
-            structure=data.get("structure", {}),
+            language=_coerce_str(data.get("language"), "en"),
+            description=_coerce_str(data.get("description")),
+            text=_coerce_str(data.get("text")),
+            structure=data.get("structure") or {},
         )
     except (json.JSONDecodeError, TypeError) as exc:
         raise ValueError(f"Invalid model response: {exc}") from exc

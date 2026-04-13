@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pytest
 
 from llmind.crypto import sha256_file
-from llmind.enricher import enrich
+from llmind.enricher import enrich, reenrich, is_already_enriched_file
 from llmind.injector import inject
 from llmind.models import ExtractionResult
 from llmind.reader import read as read_meta
@@ -102,8 +102,8 @@ def test_enrich_signs_layer_when_key_provided(mock_query, mock_inject, jpeg_file
     result = enrich(jpeg_file, creation_key=creation_key)
 
     assert result.success is True
-    # Read back the XMP and verify the signature was set
-    meta = read_meta(jpeg_file)
+    # Read back the XMP and verify the signature was set (file was renamed to .llmind.jpg)
+    meta = read_meta(result.path)
     assert meta is not None
     assert meta.current.signature is not None
     assert len(meta.current.signature) > 0
@@ -183,3 +183,59 @@ def test_enrich_openai_provider(mock_query, mock_inject, jpeg_file: Path) -> Non
     assert result.success is True
     call_kwargs = mock_query.call_args.kwargs
     assert call_kwargs.get("provider") == "openai"
+
+
+# ---------------------------------------------------------------------------
+# Guard against re-enriching .llmind files
+# ---------------------------------------------------------------------------
+
+
+def test_is_already_enriched_file_detects_llmind_stem(tmp_path: Path) -> None:
+    p = tmp_path / "photo.llmind.jpg"
+    p.touch()
+    assert is_already_enriched_file(p) is True
+
+
+def test_is_already_enriched_file_allows_plain_file(tmp_path: Path) -> None:
+    p = tmp_path / "photo.jpg"
+    p.touch()
+    assert is_already_enriched_file(p) is False
+
+
+@patch("llmind.enricher.query_image", return_value=MOCK_EXTRACTION)
+def test_enrich_skips_llmind_file(mock_query, tmp_path: Path) -> None:
+    """enrich() must skip files whose stem ends with .llmind."""
+    llmind_file = tmp_path / "photo.llmind.jpg"
+    llmind_file.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
+
+    result = enrich(llmind_file)
+
+    assert result.skipped is True
+    assert result.error == "already-enriched"
+    mock_query.assert_not_called()
+
+
+@patch("llmind.enricher.inject")
+@patch("llmind.enricher.query_image", return_value=MOCK_EXTRACTION)
+def test_reenrich_requires_llmind_file(mock_query, mock_inject, jpeg_file: Path) -> None:
+    """reenrich() must return error when given a non-.llmind file."""
+    result = reenrich(jpeg_file)
+
+    assert result.success is False
+    assert result.error is not None
+    assert "reenrich()" in result.error
+    mock_query.assert_not_called()
+
+
+@patch("llmind.enricher.inject", wraps=inject)
+@patch("llmind.enricher.query_image", return_value=MOCK_EXTRACTION)
+def test_reenrich_updates_in_place(mock_query, mock_inject, tmp_path: Path) -> None:
+    """reenrich() must not rename the file — it stays at the same path."""
+    llmind_file = tmp_path / "photo.llmind.jpg"
+    llmind_file.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
+
+    result = reenrich(llmind_file)
+
+    assert result.success is True
+    assert result.path == llmind_file
+    assert llmind_file.exists()

@@ -50,8 +50,45 @@ def enrich(paths, model, key_path, force, generate_key, key_output, provider):
         kf = load_key_file(key_path)
         creation_key = kf.creation_key
 
+    from llmind.enricher import is_already_enriched_file
+
     for path in paths:
+        if is_already_enriched_file(path):
+            console.print(f"[dim]SKIP[/dim] {path.name} (already enriched — use [bold]reenrich[/bold])")
+            continue
         result = do_enrich(path, model=model, creation_key=creation_key, force=force, provider=provider)
+        if result.skipped:
+            console.print(f"[yellow]SKIP[/yellow] {path.name} (already fresh)")
+        elif result.success:
+            console.print(f"[green]OK[/green]   {result.path.name} v{result.version} ({result.elapsed:.1f}s)")
+        else:
+            console.print(f"[red]ERR[/red]  {path.name}: {result.error}")
+
+
+# ── reenrich ─────────────────────────────────────────────────────────────────
+
+@main.command()
+@click.argument("paths", nargs=-1, type=click.Path(exists=True, path_type=Path))
+@click.option("--model", default=None, show_default=True)
+@click.option("--key", "key_path", type=click.Path(path_type=Path), default=None)
+@click.option("--force", is_flag=True, default=False, help="Re-enrich even if already fresh")
+@click.option(
+    "--provider",
+    type=click.Choice(["ollama", "anthropic", "openai"]),
+    default="ollama",
+    show_default=True,
+)
+def reenrich(paths, model, key_path, force, provider):
+    """Re-enrich existing .llmind files in-place (no rename)."""
+    from llmind.enricher import reenrich as do_reenrich
+    from llmind.crypto import load_key_file
+
+    creation_key = None
+    if key_path:
+        creation_key = load_key_file(key_path).creation_key
+
+    for path in paths:
+        result = do_reenrich(path, model=model, creation_key=creation_key, force=force, provider=provider)
         if result.skipped:
             console.print(f"[yellow]SKIP[/yellow] {path.name} (already fresh)")
         elif result.success:
@@ -238,46 +275,69 @@ def embed(paths, provider, model, api_key, base_url, force):
 @click.argument("query")
 @click.argument("paths", nargs=-1, type=click.Path(exists=True, path_type=Path))
 @click.option(
+    "--mode",
+    type=click.Choice(["hybrid", "vector", "keyword"]),
+    default="hybrid",
+    show_default=True,
+    help="Search mode: hybrid combines vector + keyword scoring.",
+)
+@click.option(
+    "--vector-weight",
+    default=0.6,
+    show_default=True,
+    help="Weight for vector score in hybrid mode (0–1).",
+)
+@click.option(
     "--provider",
     type=click.Choice(["ollama", "openai", "voyage", "anthropic"]),
     default="ollama",
     show_default=True,
-    help="Embedding API provider (must match the one used for embed). 'anthropic' routes to Voyage AI.",
+    help="Embedding API provider (must match the one used for embed).",
 )
 @click.option("--model", default=None, help="Override embedding model.")
 @click.option("--api-key", "api_key", envvar="LLMIND_EMBED_API_KEY", default=None)
 @click.option("--base-url", "base_url", default="http://localhost:11434/api/embeddings", show_default=True)
 @click.option("--top", "top_k", default=10, show_default=True, help="Number of results to show.")
-@click.option("--threshold", default=0.0, show_default=True, help="Minimum cosine similarity to include.")
-def search(query, paths, provider, model, api_key, base_url, top_k, threshold):
-    """Semantic search across LLMind files using pre-computed embeddings.
-
-    Embeds QUERY once using the chosen provider, then compares it against the
-    llmind:embedding vector stored in each file's XMP metadata.  No database
-    required — the vector lives inside the file.
+@click.option("--threshold", default=0.0, show_default=True, help="Minimum score to include.")
+@click.option("--reveal", is_flag=True, default=False, help="Reveal result files in Finder after search.")
+def search(query, paths, mode, vector_weight, provider, model, api_key, base_url, top_k, threshold, reveal):
+    """Hybrid semantic + keyword search across LLMind files.
 
     Examples:
 
-        llmind search "invoice from apple" *.llmind.jpg
+        llmind search "wedding ring" *.llmind.jpg
 
-        llmind search "mountain landscape" ~/Photos/*.llmind.png --top 5
+        llmind search "invoice" *.llmind.png --mode keyword
+
+        llmind search "sunset" ~/Photos/*.llmind.jpg --mode hybrid --vector-weight 0.7
+
+        llmind search "ring" ~/Desktop/*.llmind.png --reveal
     """
-    from llmind.embedder import embed_text, cosine_similarity, read_embedding_from_xmp
+    from llmind.embedder import embed_text, cosine_similarity, read_embedding_from_xmp, keyword_score
     from llmind.injector import read_xmp_jpeg, read_xmp_png, read_xmp_pdf
+    from llmind.reader import read as do_read
 
     if not paths:
         console.print("[yellow]No files given.[/yellow]")
         return
 
-    # Embed the query
-    try:
-        with console.status("Embedding query..."):
-            query_vec = embed_text(query, provider=provider, model=model, api_key=api_key, base_url=base_url)
-    except Exception as exc:
-        console.print(f"[red]Error embedding query:[/red] {exc}")
-        return
+    use_vector = mode in {"hybrid", "vector"}
+    use_keyword = mode in {"hybrid", "keyword"}
+    kw_weight = 1.0 - vector_weight
 
-    results: list[tuple[float, Path]] = []
+    query_vec = None
+    if use_vector:
+        try:
+            with console.status("Embedding query…"):
+                query_vec = embed_text(query, provider=provider, model=model, api_key=api_key, base_url=base_url)
+        except Exception as exc:
+            console.print(f"[red]Error embedding query:[/red] {exc}")
+            if mode == "vector":
+                return
+            console.print("[yellow]Falling back to keyword-only search.[/yellow]")
+            use_vector = False
+
+    results: list[tuple[float, float, float, Path]] = []
     skipped = 0
 
     for path in paths:
@@ -296,14 +356,32 @@ def search(query, paths, provider, model, api_key, base_url, top_k, threshold):
             skipped += 1
             continue
 
-        vec = read_embedding_from_xmp(xmp_string)
-        if vec is None:
-            skipped += 1
-            continue
+        vec_score = 0.0
+        if use_vector and query_vec is not None:
+            vec = read_embedding_from_xmp(xmp_string)
+            if vec is not None:
+                vec_score = cosine_similarity(query_vec, vec)
+            elif mode == "vector":
+                skipped += 1
+                continue
 
-        score = cosine_similarity(query_vec, vec)
-        if score >= threshold:
-            results.append((score, path))
+        kw_score = 0.0
+        if use_keyword:
+            meta = do_read(path)
+            if meta is not None:
+                desc = meta.current.description or ""
+                text = meta.current.text or ""
+                kw_score = keyword_score(query, f"{desc} {text}")
+
+        if mode == "vector":
+            combined = vec_score
+        elif mode == "keyword":
+            combined = kw_score
+        else:
+            combined = (vector_weight * vec_score) + (kw_weight * kw_score)
+
+        if combined >= threshold:
+            results.append((combined, vec_score, kw_score, path))
 
     results.sort(key=lambda x: x[0], reverse=True)
     results = results[:top_k]
@@ -311,18 +389,40 @@ def search(query, paths, provider, model, api_key, base_url, top_k, threshold):
     if not results:
         console.print("[yellow]No matching files found.[/yellow]")
         if skipped:
-            console.print(f"[dim]{skipped} file(s) had no embedding — run `llmind embed` first.[/dim]")
+            console.print(f"[dim]{skipped} file(s) skipped (no embedding).[/dim]")
         return
 
-    table = Table(title=f'Search: "{query}"', show_lines=False)
+    mode_label = {"vector": "Vector", "keyword": "Keyword", "hybrid": "Hybrid"}[mode]
+    table = Table(title=f'{mode_label} Search: "{query}"', show_lines=False)
+    table.add_column("#", style="dim", width=3, justify="right")
     table.add_column("Score", style="cyan", width=8, justify="right")
+    if mode == "hybrid":
+        table.add_column("Vec", style="dim", width=6, justify="right")
+        table.add_column("Key", style="dim", width=6, justify="right")
     table.add_column("File")
-    for score, path in results:
-        table.add_row(f"{score:.4f}", str(path))
+    table.add_column("Description", style="dim")
+
+    for i, (combined, vec_score, kw_score, path) in enumerate(results, 1):
+        file_url = path.resolve().as_uri()
+        file_link = f"[link={file_url}]{path.name}[/link]"
+        meta = do_read(path)
+        description = (meta.current.description[:60] + "…") if meta and meta.current.description else ""
+        if mode == "hybrid":
+            table.add_row(str(i), f"{combined:.4f}", f"{vec_score:.2f}", f"{kw_score:.2f}", file_link, description)
+        else:
+            table.add_row(str(i), f"{combined:.4f}", file_link, description)
+
     console.print(table)
+    console.print("[dim]💡 Tip: filenames are clickable in iTerm2/Warp — or add [bold]--reveal[/bold] to open in Finder[/dim]")
 
     if skipped:
         console.print(f"[dim]{skipped} file(s) skipped (no embedding).[/dim]")
+
+    if reveal:
+        import subprocess
+        console.print(f"\n[green]Opening {len(results)} file(s) in Finder…[/green]")
+        for _, _, _, path in results:
+            subprocess.run(["open", "-R", str(path.resolve())], check=False)
 
 
 # ── watch ─────────────────────────────────────────────────────────────────────

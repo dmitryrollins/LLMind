@@ -226,6 +226,59 @@ def patch_xmp_embedding(
     return xmp_string
 
 
+# ── Keyword scoring ───────────────────────────────────────────────────────────
+
+def keyword_score(query: str, text: str) -> float:
+    """Return a keyword relevance score in [0, 1] for *query* against *text*.
+
+    Scoring tiers:
+      1.0  — exact whole-phrase word-boundary match
+      0.7  — all query words present (but not as a contiguous phrase)
+      0.3–0.6 — partial word overlap (fraction of query words found)
+      0.15 — substring containment for words ≥ 3 chars
+      0.0  — no match
+    """
+    import re
+
+    if not query or not text:
+        return 0.0
+
+    query_lower = query.lower()
+    text_lower = text.lower()
+
+    # Tier 1: exact phrase with word boundaries
+    if re.search(r"\b" + re.escape(query_lower) + r"\b", text_lower):
+        return 1.0
+
+    query_words = set(query_lower.split())
+    text_words = set(text_lower.split())
+    if not query_words:
+        return 0.0
+
+    matched = query_words & text_words
+    overlap_ratio = len(matched) / len(query_words)
+
+    # Tier 2: all words present
+    if overlap_ratio == 1.0:
+        return 0.7
+
+    # Tier 3: partial word overlap
+    if overlap_ratio > 0.0:
+        return 0.3 + (overlap_ratio * 0.3)
+
+    # Tier 4: substring containment (only for words ≥ 3 chars)
+    for qw in query_words:
+        if len(qw) < 3:
+            continue
+        for tw in text_words:
+            if len(tw) < 3:
+                continue
+            if qw in tw or tw in qw:
+                return 0.15
+
+    return 0.0
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _normalise(vec: list[float]) -> list[float]:
