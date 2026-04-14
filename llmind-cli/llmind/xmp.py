@@ -156,19 +156,15 @@ def parse_xmp(xmp_string: str) -> LLMindMeta:
 
     root = ET.fromstring(body.strip())
 
-    # Locate rdf:Description — walk regardless of prefix mapping
+    # Locate rdf:Description that has the llmind namespace
     rdf_desc = None
     for elem in root.iter():
-        if elem.tag == f"{{{RDF_NS}}}Description":
+        if elem.tag == f"{{{RDF_NS}}}Description" and _ll("version") in elem.attrib:
             rdf_desc = elem
             break
 
     if rdf_desc is None:
-        raise ValueError("No rdf:Description element found in XMP")
-
-    # Validate presence of llmind:version
-    if _ll("version") not in rdf_desc.attrib:
-        raise ValueError("llmind:version attribute is missing from rdf:Description")
+        raise ValueError("No llmind rdf:Description element found in XMP")
 
     # Retrieve history child element
     history_elem = rdf_desc.find(_ll("history"))

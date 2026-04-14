@@ -34,7 +34,7 @@ def search(
     model: str | None = Query(None),
     api_key: str | None = Query(None),
     top: int = Query(20, ge=1, le=100),
-    threshold: float = Query(0.0, ge=0.0, le=1.0),
+    threshold: float = Query(0.01, ge=0.0, le=1.0),
     recursive: bool = Query(True),
 ) -> SearchResponse:
     if not q.strip():

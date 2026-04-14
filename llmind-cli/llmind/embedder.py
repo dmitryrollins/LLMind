@@ -124,16 +124,24 @@ def _embed_voyage(text: str, model: str, api_key: str | None) -> list[float]:
         pass
 
     # HTTP fallback (no extra dependency needed)
+    import time
     import requests
-    resp = requests.post(
-        "https://api.voyageai.com/v1/embeddings",
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json={"model": model, "input": [text], "input_type": "document"},
-        timeout=60,
-    )
+    for attempt in range(5):
+        resp = requests.post(
+            "https://api.voyageai.com/v1/embeddings",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={"model": model, "input": [text], "input_type": "document"},
+            timeout=60,
+        )
+        if resp.status_code == 429:
+            wait = 2 ** attempt
+            time.sleep(wait)
+            continue
+        resp.raise_for_status()
+        vec = resp.json()["data"][0]["embedding"]
+        return _normalise(vec)
     resp.raise_for_status()
-    vec = resp.json()["data"][0]["embedding"]
-    return _normalise(vec)
+    return []
 
 
 # ── Similarity ────────────────────────────────────────────────────────────────
@@ -265,16 +273,6 @@ def keyword_score(query: str, text: str) -> float:
     # Tier 3: partial word overlap
     if overlap_ratio > 0.0:
         return 0.3 + (overlap_ratio * 0.3)
-
-    # Tier 4: substring containment (only for words ≥ 3 chars)
-    for qw in query_words:
-        if len(qw) < 3:
-            continue
-        for tw in text_words:
-            if len(tw) < 3:
-                continue
-            if qw in tw or tw in qw:
-                return 0.15
 
     return 0.0
 

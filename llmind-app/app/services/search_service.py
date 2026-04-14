@@ -84,7 +84,10 @@ def search_files(
 
         kw_score = 0.0
         description = ""
-        meta = read_meta(path)
+        try:
+            meta = read_meta(path)
+        except Exception:
+            continue
         if meta is not None:
             description = meta.current.description or ""
             if use_keyword:

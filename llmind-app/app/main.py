@@ -13,3 +13,8 @@ app.add_middleware(
 app.include_router(directories.router)
 app.include_router(search.router)
 app.include_router(files.router)
+
+
+@app.get("/health")
+def health() -> dict:
+    return {"status": "ok"}
