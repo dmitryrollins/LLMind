@@ -126,7 +126,7 @@ def _embed_voyage(text: str, model: str, api_key: str | None) -> list[float]:
     # HTTP fallback (no extra dependency needed)
     import time
     import requests
-    for attempt in range(5):
+    for attempt in range(8):
         resp = requests.post(
             "https://api.voyageai.com/v1/embeddings",
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
@@ -134,11 +134,12 @@ def _embed_voyage(text: str, model: str, api_key: str | None) -> list[float]:
             timeout=60,
         )
         if resp.status_code == 429:
-            wait = 2 ** attempt
+            wait = min(60, 5 * (2 ** attempt))
             time.sleep(wait)
             continue
         resp.raise_for_status()
         vec = resp.json()["data"][0]["embedding"]
+        time.sleep(0.5)  # throttle to stay under rate limit
         return _normalise(vec)
     resp.raise_for_status()
     return []

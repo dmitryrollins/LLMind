@@ -241,7 +241,11 @@ def embed(paths, provider, model, api_key, base_url, force):
             continue
 
         # Extract description from the parsed layer
-        meta = do_read(path)
+        try:
+            meta = do_read(path)
+        except Exception as exc:
+            console.print(f"[yellow]SKIP[/yellow] {path.name} (malformed XMP: {exc})")
+            continue
         if meta is None:
             console.print(f"[red]ERR[/red]  {path.name}: no LLMind metadata")
             continue
