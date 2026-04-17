@@ -375,6 +375,29 @@ export default function LLMindConverter() {
         if (data.error) throw new Error(data.error.message);
       }
 
+      else if (provider === "gemini") {
+        const geminiModel = "gemini-2.0-flash";
+        const resp = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  { inlineData: { mimeType: mediaType, data: b64 } },
+                  { text: userPrompt }
+                ]
+              }]
+            })
+          }
+        );
+        data = await resp.json();
+        if (data.error) throw new Error(data.error.message);
+        // Reshape to match Anthropic response structure for downstream parsing
+        data = { content: [{ text: data.candidates[0].content.parts[0].text }] };
+      }
+
       // 5. Parse response
       setStatus("Parsing extraction...");
       const rawText = data.content.map(c => c.text || "").join("");
@@ -394,7 +417,7 @@ export default function LLMindConverter() {
         version: 1,
         timestamp: now,
         generator: "llmind-web/0.1",
-        generator_model: provider === "anthropic" ? "claude-sonnet-4-20250514" : "unknown",
+        generator_model: provider === "anthropic" ? "claude-sonnet-4-20250514" : provider === "gemini" ? "gemini-2.0-flash" : "unknown",
         checksum: checksum,
         language: extracted.language || "en",
         description: extracted.description || "",
@@ -633,6 +656,7 @@ export default function LLMindConverter() {
             <div style={{ display: "flex", gap: 8, marginBottom: 28 }}>
               {[
                 { id: "anthropic", label: "Claude Sonnet", sub: "Anthropic" },
+                { id: "gemini", label: "Gemini Flash", sub: "Google" },
               ].map(m => (
                 <button key={m.id} onClick={() => setProvider(m.id)}
                   style={{
@@ -654,7 +678,7 @@ export default function LLMindConverter() {
                 type={showKey ? "text" : "password"}
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                placeholder={provider === "anthropic" ? "sk-ant-..." : "sk-..."}
+                placeholder={provider === "anthropic" ? "sk-ant-..." : provider === "gemini" ? "AIza..." : "sk-..."}
                 style={{
                   width: "100%", padding: "14px 48px 14px 16px", borderRadius: 10,
                   border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)",
@@ -668,7 +692,7 @@ export default function LLMindConverter() {
               }}>{showKey ? "hide" : "show"}</button>
             </div>
             <div style={{ fontSize: 10, color: "#444", marginBottom: 32, lineHeight: 1.5 }}>
-              Your key is used in-browser only. It is sent directly to {provider === "anthropic" ? "api.anthropic.com" : "api.openai.com"} and never touches our servers. Not stored anywhere.
+              Your key is used in-browser only. It is sent directly to {provider === "anthropic" ? "api.anthropic.com" : provider === "gemini" ? "generativelanguage.googleapis.com" : "api.openai.com"} and never touches our servers. Not stored anywhere.
             </div>
 
             {error && <div style={{ color: "#ef4444", fontSize: 12, marginBottom: 16 }}>{error}</div>}
