@@ -1,9 +1,10 @@
 """Embedding generation and similarity search for LLMind files.
 
-Supports three providers:
+Supports four providers:
   - ollama   : nomic-embed-text (local, default)
   - openai   : text-embedding-3-small
   - voyage   : voyage-3 (Anthropic's embedding partner)
+  - gemini   : text-embedding-004 (Google Gemini)
 
 The embedding vector is stored in the XMP as a JSON array under
 ``llmind:embedding``, alongside a ``llmind:embedding_model`` attribute.
@@ -14,6 +15,8 @@ import json
 import math
 from pathlib import Path
 from typing import Sequence
+
+import requests
 
 
 # ── Provider defaults ─────────────────────────────────────────────────────────
@@ -26,6 +29,7 @@ EMBEDDING_DEFAULTS: dict[str, str] = {
     # Requires a Voyage API key from https://www.voyageai.com  (free tier available).
     # Your sk-ant-... Anthropic key will NOT work here.
     "anthropic": "voyage-3.5",
+    "gemini": "text-embedding-004",
 }
 
 
@@ -42,10 +46,13 @@ def embed_text(
 
     Args:
         text:     The text to embed (description or query).
-        provider: One of ``"ollama"``, ``"openai"``, ``"voyage"``, ``"anthropic"``.
+        provider: One of ``"ollama"``, ``"openai"``, ``"voyage"``, ``"anthropic"``,
+                  ``"gemini"``.
                   ``"anthropic"`` is an alias for ``"voyage"`` — Anthropic does not
                   offer their own embedding API; they recommend Voyage AI.
                   Get a free key at https://www.voyageai.com.
+                  ``"gemini"`` uses Google's text-embedding-004 model.
+                  Get a free key at https://aistudio.google.com/apikey.
         model:    Override the provider default model.
         api_key:  Required for openai / voyage / anthropic providers.
         base_url: Ollama API endpoint (ignored for other providers).
@@ -70,6 +77,8 @@ def embed_text(
         return _embed_openai(text, resolved, api_key)
     elif provider == "voyage":
         return _embed_voyage(text, resolved, api_key)
+    elif provider == "gemini":
+        return _embed_gemini(text, resolved, api_key)
     else:
         raise ValueError(f"Unsupported embedding provider: {provider!r}")
 
@@ -143,6 +152,37 @@ def _embed_voyage(text: str, model: str, api_key: str | None) -> list[float]:
         return _normalise(vec)
     resp.raise_for_status()
     return []
+
+
+def _embed_gemini(text: str, model: str, api_key: str | None) -> list[float]:
+    """Google Gemini embeddings via REST API.
+
+    Uses the same GEMINI_API_KEY as the vision client.
+    Get an API key at https://aistudio.google.com/apikey
+    """
+    if not api_key:
+        import os
+        api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise ValueError(
+            "GEMINI_API_KEY is required for Gemini embeddings.\n"
+            "Get a free key at https://aistudio.google.com/apikey"
+        )
+    try:
+        resp = requests.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/{model}:embedContent?key={api_key}",
+            headers={"Content-Type": "application/json"},
+            json={
+                "model": f"models/{model}",
+                "content": {"parts": [{"text": text}]},
+            },
+            timeout=60,
+        )
+        resp.raise_for_status()
+        vec = resp.json()["embedding"]["values"]
+        return _normalise(vec)
+    except Exception as exc:
+        raise ValueError(f"Gemini embedding error: {exc}") from exc
 
 
 # ── Similarity ────────────────────────────────────────────────────────────────
