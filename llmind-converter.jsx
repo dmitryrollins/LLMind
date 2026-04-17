@@ -413,9 +413,12 @@ export default function LLMindConverter() {
           }
         );
         data = await resp.json();
-        if (data.error) throw new Error(data.error.message);
+        if (data.error) throw new Error(data.error.message || data.error.status || JSON.stringify(data.error));
+        // Extract text from Gemini response
+        const geminiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!geminiText) throw new Error("Gemini returned no text. Response: " + JSON.stringify(data).slice(0, 200));
         // Reshape to match Anthropic response structure for downstream parsing
-        data = { content: [{ text: data.candidates[0].content.parts[0].text }] };
+        data = { content: [{ text: geminiText }] };
       }
 
       // 5. Parse response
