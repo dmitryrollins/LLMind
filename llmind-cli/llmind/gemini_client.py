@@ -15,7 +15,7 @@ from llmind.vision import EXTRACTION_PROMPT, _detect_media_type, _parse_response
 
 def query_gemini(
     image_bytes: bytes,
-    model: str = "gemini-2.0-flash",
+    model: str = "gemini-2.5-flash",
 ) -> ExtractionResult:
     """Send image to Google Gemini vision model, return ExtractionResult."""
     if _genai_sdk is None:

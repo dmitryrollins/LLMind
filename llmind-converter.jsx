@@ -280,6 +280,7 @@ export default function LLMindConverter() {
   const [fileData, setFileData] = useState(null);
   const [preview, setPreview] = useState(null);
   const [provider, setProvider] = useState("anthropic");
+  const [geminiModel, setGeminiModel] = useState("gemini-2.5-flash");
   const [apiKey, setApiKey] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [status, setStatus] = useState("");
@@ -396,7 +397,6 @@ export default function LLMindConverter() {
       }
 
       else if (provider === "gemini") {
-        const geminiModel = "gemini-2.0-flash";
         const resp = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`,
           {
@@ -437,7 +437,7 @@ export default function LLMindConverter() {
         version: 1,
         timestamp: now,
         generator: "llmind-web/0.1",
-        generator_model: provider === "anthropic" ? "claude-sonnet-4-20250514" : provider === "gemini" ? "gemini-2.0-flash" : "unknown",
+        generator_model: provider === "anthropic" ? "claude-sonnet-4-20250514" : provider === "gemini" ? geminiModel : "unknown",
         checksum: checksum,
         language: extracted.language || "en",
         description: extracted.description || "",
@@ -690,6 +690,31 @@ export default function LLMindConverter() {
                 </button>
               ))}
             </div>
+
+            {/* Gemini model selector */}
+            {provider === "gemini" && (
+              <div style={{ marginBottom: 28 }}>
+                <label style={{ fontSize: 11, color: "#666", letterSpacing: 1, textTransform: "uppercase", display: "block", marginBottom: 8 }}>Gemini model</label>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {[
+                    { id: "gemini-2.5-flash", label: "2.5 Flash", sub: "Fast, best value" },
+                    { id: "gemini-2.5-pro", label: "2.5 Pro", sub: "Most capable" },
+                    { id: "gemini-2.0-flash-lite", label: "2.0 Flash Lite", sub: "Cheapest" },
+                  ].map(m => (
+                    <button key={m.id} onClick={() => setGeminiModel(m.id)}
+                      style={{
+                        flex: "1 1 auto", padding: "10px 12px", borderRadius: 8,
+                        border: geminiModel === m.id ? "1.5px solid #f97316" : "1px solid rgba(255,255,255,0.06)",
+                        background: geminiModel === m.id ? "rgba(249,115,22,0.06)" : "rgba(255,255,255,0.02)",
+                        cursor: "pointer", textAlign: "left", transition: "all 0.2s"
+                      }}>
+                      <div style={{ fontSize: 12, color: geminiModel === m.id ? "#f97316" : "#888", fontWeight: 500 }}>{m.label}</div>
+                      <div style={{ fontSize: 9, color: "#555", marginTop: 2 }}>{m.sub}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* API Key */}
             <label style={{ fontSize: 11, color: "#666", letterSpacing: 1, textTransform: "uppercase", display: "block", marginBottom: 8 }}>API key</label>
