@@ -1,14 +1,14 @@
-# Gemini Vision Provider — Design Spec
+# Gemini Provider — Design Spec
 
 **Date:** 2026-04-17
 **Status:** Approved
-**Scope:** Add Google Gemini as a vision provider across CLI, React frontend
+**Scope:** Add Google Gemini as a vision + embedding provider across CLI, React frontend
 
 ---
 
 ## Goal
 
-Add Google Gemini as a fourth vision provider for text extraction, alongside Anthropic, OpenAI, and Ollama. All Gemini models available; default is `gemini-2.0-flash`. Auth via simple `GEMINI_API_KEY` — no OAuth or Google sign-in required.
+Add Google Gemini as a fourth vision provider for text extraction and a fourth embedding provider, alongside Anthropic, OpenAI, and Ollama. All Gemini models available; vision default is `gemini-2.0-flash`, embedding default is `text-embedding-004`. Auth via simple `GEMINI_API_KEY` — no OAuth or Google sign-in required.
 
 ## Motivation
 
@@ -52,7 +52,12 @@ Add `"gemini"` to `click.Choice` lists in these 3 commands:
 - `reenrich` — same
 - `watch` — same
 
-No changes to `embed`, `search`, `read`, `verify`, `strip`, `history` (they don't use vision providers).
+Add `"gemini"` to `click.Choice` lists in these 2 embedding commands:
+
+- `embed` — `type=click.Choice(["ollama", "openai", "voyage", "anthropic", "gemini"])`
+- `search` — same
+
+No changes to `read`, `verify`, `strip`, `history`.
 
 ## 4. CLI — Dependencies (`pyproject.toml`)
 
@@ -108,26 +113,49 @@ const text = response.candidates[0].content.parts[0].text;
 
 Set `generator_model` to the selected Gemini model name.
 
-## 6. Environment
+## 6. CLI — Embeddings (`embedder.py`)
+
+Add Gemini as a fifth embedding provider:
+
+- Add `"gemini": "text-embedding-004"` to `EMBEDDING_DEFAULTS`
+- Add `elif provider == "gemini"` branch in `embed_text()` that calls `_embed_gemini()`
+- New `_embed_gemini()` function:
+  - Uses `GEMINI_API_KEY` env var (same key as vision)
+  - REST call to `https://generativelanguage.googleapis.com/v1beta/models/{model}:embedContent?key={key}`
+  - Request body: `{"model": "models/{model}", "content": {"parts": [{"text": text}]}}`
+  - Response: `response["embedding"]["values"]` → normalise → return
+  - No SDK dependency needed — uses `requests` (already a dependency)
+
+### React Frontend embedding
+
+Add Gemini card to the embedding provider selector:
+
+```javascript
+{ id: "gemini", label: "Gemini", sub: "text-embedding-004" }
+```
+
+Browser calls same REST endpoint with `?key=` param. Uses the same API key already entered for vision (no second key needed).
+
+## 7. Environment
 
 - Add `GEMINI_API_KEY=` to `.env.example` (CLI)
 - No changes to `.env` (user adds their own key)
 - No changes to FastAPI backend (does not perform vision extraction)
 
-## 7. Files Changed
+## 8. Files Changed
 
 | File | Change |
 |------|--------|
 | `llmind-cli/llmind/gemini_client.py` | **New** — Gemini vision client (~55 lines) |
 | `llmind-cli/llmind/vision.py` | Add gemini to defaults + dispatcher |
-| `llmind-cli/llmind/cli.py` | Add "gemini" to 3 Choice lists |
+| `llmind-cli/llmind/embedder.py` | Add gemini embedding provider + `_embed_gemini()` |
+| `llmind-cli/llmind/cli.py` | Add "gemini" to 5 Choice lists (enrich, reenrich, watch, embed, search) |
 | `llmind-cli/pyproject.toml` | Add gemini optional dep |
-| `llmind-converter.jsx` | Add Gemini provider card + API call |
+| `llmind-converter.jsx` | Add Gemini vision + embedding provider cards + API calls |
 | `.env.example` (if exists) | Add GEMINI_API_KEY entry |
 
-## 8. Not in scope
+## 9. Not in scope
 
-- Gemini embeddings (existing embedding providers are sufficient)
 - Google Cloud / Vertex AI auth
 - Gemini-specific prompt tuning (use same `EXTRACTION_PROMPT`)
 - FastAPI backend changes
