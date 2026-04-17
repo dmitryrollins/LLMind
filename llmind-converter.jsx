@@ -9,6 +9,7 @@ const EMBED_DEFAULTS = {
   openai: "text-embedding-3-small",
   voyage: "voyage-3.5",
   anthropic: "voyage-3.5",
+  gemini: "text-embedding-004",
 };
 
 // Crypto utils for LLMind key generation and signing
@@ -195,6 +196,25 @@ async function embedText(text, provider, apiKey) {
     const vec = data.embedding || data.embeddings?.[0];
     if (!vec) throw new Error("Ollama returned no embedding vector");
     return { vector: normaliseVec(vec), model };
+  }
+
+  if (actualProvider === "gemini") {
+    if (!apiKey) throw new Error("Gemini API key required (get one free at aistudio.google.com/apikey)");
+    const model = EMBED_DEFAULTS.gemini;
+    const resp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: `models/${model}`,
+          content: { parts: [{ text }] },
+        }),
+      }
+    );
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error?.message || "Gemini embedding failed");
+    return { vector: normaliseVec(data.embedding.values), model };
   }
 
   throw new Error(`Unknown embedding provider: ${provider}`);
@@ -815,6 +835,7 @@ export default function LLMindConverter() {
               <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
                 {[
                   { id: "openai", label: "OpenAI", sub: "text-embedding-3-small" },
+                  { id: "gemini", label: "Gemini", sub: "text-embedding-004" },
                   { id: "voyage", label: "Voyage AI", sub: "voyage-3.5" },
                   { id: "anthropic", label: "Anthropic", sub: "→ Voyage AI" },
                   ...(IS_LOCAL ? [{ id: "ollama", label: "Ollama", sub: "local · no key" }] : []),
@@ -835,13 +856,13 @@ export default function LLMindConverter() {
               {embedProvider !== "ollama" && !embeddingDone && (
                 <div style={{ marginBottom: 12 }}>
                   <label style={{ fontSize: 10, color: "#555", letterSpacing: 1, textTransform: "uppercase", display: "block", marginBottom: 8 }}>
-                    {embedProvider === "openai" ? "OpenAI API key (sk-...)" : "Voyage AI key (pa-...) — not your Anthropic key"}
+                    {embedProvider === "openai" ? "OpenAI API key (sk-...)" : embedProvider === "gemini" ? "Gemini API key (AIza...)" : "Voyage AI key (pa-...) — not your Anthropic key"}
                   </label>
                   <input
                     type="password"
                     value={embedApiKey}
                     onChange={(e) => setEmbedApiKey(e.target.value)}
-                    placeholder={embedProvider === "openai" ? "sk-..." : "pa-..."}
+                    placeholder={embedProvider === "openai" ? "sk-..." : embedProvider === "gemini" ? "AIza..." : "pa-..."}
                     style={{
                       width: "100%", padding: "12px 16px", borderRadius: 8,
                       border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)",
