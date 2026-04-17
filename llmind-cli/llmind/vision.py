@@ -21,6 +21,7 @@ PROVIDER_DEFAULTS: dict[str, str] = {
     "ollama": "qwen2.5-vl:7b",
     "anthropic": "claude-haiku-4-5-20251001",
     "openai": "gpt-4o-mini",
+    "gemini": "gemini-2.0-flash",
 }
 
 
@@ -89,8 +90,11 @@ def query_image(
     elif provider == "openai":
         from llmind.openai_client import query_openai
         return query_openai(image_bytes, model=resolved_model)
+    elif provider == "gemini":
+        from llmind.gemini_client import query_gemini
+        return query_gemini(image_bytes, model=resolved_model)
     else:
-        raise ValueError(f"Unknown provider: {provider!r}. Choose: ollama, anthropic, openai")
+        raise ValueError(f"Unknown provider: {provider!r}. Choose: ollama, anthropic, openai, gemini")
 
 
 def query_pdf(
