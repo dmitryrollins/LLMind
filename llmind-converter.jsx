@@ -423,7 +423,7 @@ export default function LLMindConverter() {
 
       // 5. Parse response
       setStatus("Parsing extraction...");
-      const rawText = data.content.map(c => c.text || "").join("");
+      const rawText = String(data.content.map(c => (typeof c.text === "string" ? c.text : JSON.stringify(c.text) || "")).join(""));
       const cleaned = rawText.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
       const extracted = JSON.parse(cleaned);
 
