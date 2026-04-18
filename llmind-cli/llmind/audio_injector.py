@@ -122,3 +122,77 @@ def _remove_llmind_xmp_wav(path: Path) -> bool:
         return False
     path.write_bytes(new_data)
     return True
+
+
+# ── M4A / MP4 ───────────────────────────────────────────────────────────────
+
+XMP_UUID = bytes.fromhex("BE7ACFCB97A942E89C71999491E3AFAC")
+
+
+def _iter_mp4_boxes(data: bytes):
+    """Yield (offset, atom_type, full_size, payload, header_size) for top-level MP4 boxes."""
+    i = 0
+    while i + 8 <= len(data):
+        size = _struct.unpack(">I", data[i:i + 4])[0]
+        atom = data[i + 4:i + 8]
+        header = 8
+        if size == 1:
+            if i + 16 > len(data):
+                break
+            size = _struct.unpack(">Q", data[i + 8:i + 16])[0]
+            header = 16
+        elif size == 0:
+            size = len(data) - i
+        if size < header or i + size > len(data):
+            break
+        payload = data[i + header:i + size]
+        yield i, atom, size, payload, header
+        i += size
+
+
+def _build_uuid_box(uuid_bytes: bytes, payload: bytes) -> bytes:
+    """Build a top-level MP4 uuid box: [size:4][type:'uuid'][uuid:16][payload]."""
+    assert len(uuid_bytes) == 16
+    total = 8 + 16 + len(payload)
+    return _struct.pack(">I", total) + b"uuid" + uuid_bytes + payload
+
+
+def _strip_llmind_uuid_boxes(data: bytes) -> bytes:
+    out = bytearray()
+    for _, atom, size, payload, header in _iter_mp4_boxes(data):
+        if atom == b"uuid" and payload[:16] == XMP_UUID and _LLMIND_MARKER in payload[16:]:
+            continue
+        box_size = header + len(payload)
+        if header == 16:
+            out += _struct.pack(">I", 1) + atom + _struct.pack(">Q", box_size) + payload
+        else:
+            out += _struct.pack(">I", box_size) + atom + payload
+    return bytes(out)
+
+
+def _inject_m4a(path: Path, xmp_string: str) -> None:
+    data = path.read_bytes()
+    data = _strip_llmind_uuid_boxes(data)
+    xmp_bytes = xmp_string.encode("utf-8")
+    box = _build_uuid_box(XMP_UUID, xmp_bytes)
+    # Append at end — top level, safe for QuickTime/iTunes parsers.
+    path.write_bytes(data + box)
+
+
+def _read_xmp_m4a(path: Path) -> str | None:
+    data = path.read_bytes()
+    for _, atom, _size, payload, _header in _iter_mp4_boxes(data):
+        if atom == b"uuid" and payload[:16] == XMP_UUID:
+            xmp = payload[16:]
+            if _LLMIND_MARKER in xmp:
+                return xmp.decode("utf-8")
+    return None
+
+
+def _remove_llmind_xmp_m4a(path: Path) -> bool:
+    data = path.read_bytes()
+    new_data = _strip_llmind_uuid_boxes(data)
+    if new_data == data:
+        return False
+    path.write_bytes(new_data)
+    return True
