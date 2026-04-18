@@ -14,6 +14,13 @@ class ExtractionResult:
 
 
 @dataclass(frozen=True)
+class Segment:
+    start: float
+    end: float
+    text: str
+
+
+@dataclass(frozen=True)
 class Layer:
     version: int
     timestamp: str          # ISO 8601 UTC
@@ -26,6 +33,10 @@ class Layer:
     structure: dict         # mutable — do not mutate in place
     key_id: str             # first 16 hex chars of SHA-256(creation_key)
     signature: str | None = None  # HMAC-SHA256; None if unsigned
+    # Audio-only optional fields:
+    segments: tuple[Segment, ...] | None = None
+    duration_seconds: float | None = None
+    media_type: str = "image"   # "image" | "pdf" | "audio"
 
 
 @dataclass(frozen=True)
