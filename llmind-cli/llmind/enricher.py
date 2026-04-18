@@ -156,13 +156,29 @@ def _reenrich(
         return _skip_result(path)
 
     suffix = path.suffix.lower()
+    media_type = "image"
+    audio_kwargs: dict = {}
     if suffix == ".pdf":
         image_pages = _pdf_to_images(path)
         extraction = query_pdf(image_pages, provider=provider, model=model, base_url=base_url)
+        media_type = "pdf"
+    elif is_audio_file(path):
+        audio = query_audio(path, provider=provider, model=model)
+        extraction = ExtractionResult(
+            language=audio.language,
+            description=audio.summary,
+            text=audio.text,
+            structure={},
+        )
+        audio_kwargs = _audio_layer_fields(audio)
+        media_type = "audio"
     else:
         extraction = query_image(path.read_bytes(), provider=provider, model=model, base_url=base_url)
 
-    resolved_model = model or PROVIDER_DEFAULTS.get(provider, "")
+    if is_audio_file(path):
+        resolved_model = model or AUDIO_PROVIDER_DEFAULTS.get(provider, "")
+    else:
+        resolved_model = model or PROVIDER_DEFAULTS.get(provider, "")
     existing_meta = read_meta(path)
     existing_layers: list[Layer] = list(existing_meta.layers) if existing_meta else []
     version = len(existing_layers) + 1
@@ -176,6 +192,8 @@ def _reenrich(
         structure=extraction.structure,
         key_id=derive_key_id(creation_key) if creation_key else "",
         signature=None,
+        **({} if audio_kwargs else {"media_type": media_type}),
+        **audio_kwargs,
     )
     if creation_key:
         layer_dict = layer_to_dict(layer, include_signature=False)

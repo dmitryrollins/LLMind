@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from llmind.audio import AudioExtraction
-from llmind.enricher import enrich
+from llmind.enricher import enrich, reenrich
 from llmind.models import Segment
 from llmind.reader import read
 
@@ -59,4 +59,21 @@ def test_enrich_m4a(tmp_path):
     out = src.with_name("voice.llmind.m4a")
     assert out.exists()
     meta = read(out)
+    assert meta.current.media_type == "audio"
+
+
+def test_reenrich_mp3_appends_v2(tmp_path):
+    src = tmp_path / "memo.mp3"
+    shutil.copy(FIX / "silent.mp3", src)
+    with patch("llmind.enricher.query_audio", return_value=_fake_extraction()):
+        first = enrich(src, provider="openai")
+    assert first.success
+    out = src.with_name("memo.llmind.mp3")
+
+    with patch("llmind.enricher.query_audio", return_value=_fake_extraction()):
+        second = reenrich(out, provider="openai", force=True)
+    assert second.success
+    assert second.version == 2
+    meta = read(out)
+    assert meta.layer_count == 2
     assert meta.current.media_type == "audio"
