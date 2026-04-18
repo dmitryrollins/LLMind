@@ -15,6 +15,7 @@ dependencies = [
     "pdf2image>=1.16",
     "rich>=13.0",
     "pyyaml>=6.0",
+    "mutagen>=1.47",
 ]
 
 [project.scripts]
@@ -26,7 +27,13 @@ anthropic = ["anthropic>=0.40.0"]
 openai = ["openai>=1.50.0"]
 embeddings = ["voyageai>=0.2.0"]
 gemini = ["google-genai>=1.0.0"]
-all-providers = ["anthropic>=0.40.0", "openai>=1.50.0", "google-genai>=1.0.0"]
+whisper-local = ["faster-whisper>=1.0"]
+all-providers = [
+    "anthropic>=0.40.0",
+    "openai>=1.50.0",
+    "google-genai>=1.0.0",
+    "faster-whisper>=1.0",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
