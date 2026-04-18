@@ -4,9 +4,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 from llmind.audio import AudioExtraction
+from llmind.crypto import sha256_file
 from llmind.enricher import enrich, reenrich
 from llmind.models import Segment
-from llmind.reader import read
+from llmind.reader import is_fresh, read
 
 FIX = Path(__file__).parent / "fixtures" / "audio"
 
@@ -60,6 +61,29 @@ def test_enrich_m4a(tmp_path):
     assert out.exists()
     meta = read(out)
     assert meta.current.media_type == "audio"
+
+
+def test_enriched_audio_is_fresh(tmp_path):
+    src = tmp_path / "memo.mp3"
+    shutil.copy(FIX / "silent.mp3", src)
+    with patch("llmind.enricher.query_audio", return_value=_fake_extraction()):
+        result = enrich(src, provider="openai")
+    out = src.with_name("memo.llmind.mp3")
+    # After enrichment the checksum stored in the layer matches the
+    # pre-injection hash, so is_fresh (computed against the pre-injection
+    # content) returns True iff we re-enrich and the file has not mutated.
+    # For this test we just confirm the stored checksum exists and matches
+    # the recorded layer value.
+    meta = read(out)
+    stored = meta.current.checksum
+    assert len(stored) == 64
+    # Touching the file should NOT invalidate freshness (XMP added later
+    # would change the hash, but the layer's own checksum is pre-injection)
+    # — we simply confirm the invariant holds for the in-memory read.
+    assert is_fresh(out, stored) is True
+    # Sanity: the actual on-disk hash now differs from the stored checksum
+    # because the XMP was injected after the hash was captured.
+    assert sha256_file(out) != stored
 
 
 def test_reenrich_mp3_appends_v2(tmp_path):
