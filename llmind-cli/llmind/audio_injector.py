@@ -55,3 +55,70 @@ def _remove_llmind_xmp_mp3(path: Path) -> bool:
     tags.delall("PRIV:XMP")
     tags.save(path)
     return True
+
+
+import struct as _struct
+
+# ── WAV / RIFF ──────────────────────────────────────────────────────────────
+
+_PMX_ID = b"_PMX"
+
+
+def _iter_riff_chunks(data: bytes):
+    """Yield (offset, chunk_id, size, payload)."""
+    if data[:4] != b"RIFF" or data[8:12] != b"WAVE":
+        raise ValueError("Not a RIFF/WAVE file")
+    i = 12
+    while i + 8 <= len(data):
+        chunk_id = data[i:i + 4]
+        size = _struct.unpack("<I", data[i + 4:i + 8])[0]
+        payload = data[i + 8:i + 8 + size]
+        yield i, chunk_id, size, payload
+        i += 8 + size + (size & 1)
+
+
+def _strip_pmx_chunks(data: bytes) -> bytes:
+    out = bytearray(data[:12])  # RIFF header preserved
+    for _, cid, size, payload in _iter_riff_chunks(data):
+        if cid == _PMX_ID and _LLMIND_MARKER in payload:
+            continue
+        out += cid + _struct.pack("<I", size) + payload
+        if size & 1:
+            out += b"\x00"
+    new_riff_size = len(out) - 8
+    out[4:8] = _struct.pack("<I", new_riff_size)
+    return bytes(out)
+
+
+def _inject_wav(path: Path, xmp_string: str) -> None:
+    data = path.read_bytes()
+    data = _strip_pmx_chunks(data)
+    payload = xmp_string.encode("utf-8")
+    chunk = _PMX_ID + _struct.pack("<I", len(payload)) + payload
+    if len(payload) & 1:
+        chunk += b"\x00"
+    out = bytearray(data + chunk)
+    new_riff_size = len(out) - 8
+    out[4:8] = _struct.pack("<I", new_riff_size)
+    path.write_bytes(bytes(out))
+
+
+def _read_xmp_wav(path: Path) -> str | None:
+    data = path.read_bytes()
+    try:
+        chunks = list(_iter_riff_chunks(data))
+    except ValueError:
+        return None
+    for _, cid, _, payload in chunks:
+        if cid == _PMX_ID and _LLMIND_MARKER in payload:
+            return payload.decode("utf-8")
+    return None
+
+
+def _remove_llmind_xmp_wav(path: Path) -> bool:
+    data = path.read_bytes()
+    new_data = _strip_pmx_chunks(data)
+    if new_data == data:
+        return False
+    path.write_bytes(new_data)
+    return True
