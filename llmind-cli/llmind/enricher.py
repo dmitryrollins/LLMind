@@ -21,12 +21,13 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+from llmind.audio import AudioExtraction, query_audio, AUDIO_PROVIDER_DEFAULTS
 from llmind.crypto import derive_key_id, sha256_file, sign_layer
 from llmind.injector import inject
-from llmind.models import EnrichResult, Layer
+from llmind.models import EnrichResult, ExtractionResult, Layer
 from llmind.vision import query_image, query_pdf, PROVIDER_DEFAULTS
 from llmind.reader import is_fresh, read as read_meta
-from llmind.safety import is_safe_file
+from llmind.safety import is_audio_file, is_safe_file
 from llmind.xmp import build_xmp, layer_to_dict
 
 
@@ -53,6 +54,15 @@ def _error_result(path: Path, error: str, elapsed: float) -> EnrichResult:
         version=None, regions=0, figures=0, tables=0,
         elapsed=elapsed, error=error,
     )
+
+
+def _audio_layer_fields(extraction: AudioExtraction) -> dict:
+    """Map AudioExtraction to Layer-keyword kwargs (segments, duration, media_type)."""
+    return {
+        "segments": extraction.segments,
+        "duration_seconds": extraction.duration_seconds,
+        "media_type": "audio",
+    }
 
 
 def enrich(
@@ -219,15 +229,31 @@ def _enrich(
             error=None,
         )
 
-    # Query vision provider
+    # Query vision/audio provider
     suffix = path.suffix.lower()
+    media_type = "image"
+    audio_kwargs: dict = {}
     if suffix == ".pdf":
         image_pages = _pdf_to_images(path)
         extraction = query_pdf(image_pages, provider=provider, model=model, base_url=base_url)
+        media_type = "pdf"
+    elif is_audio_file(path):
+        audio = query_audio(path, provider=provider, model=model)
+        extraction = ExtractionResult(
+            language=audio.language,
+            description=audio.summary,
+            text=audio.text,
+            structure={},
+        )
+        audio_kwargs = _audio_layer_fields(audio)
+        media_type = "audio"
     else:
         extraction = query_image(path.read_bytes(), provider=provider, model=model, base_url=base_url)
 
-    resolved_model = model or PROVIDER_DEFAULTS.get(provider, "")
+    if is_audio_file(path):
+        resolved_model = model or AUDIO_PROVIDER_DEFAULTS.get(provider, "")
+    else:
+        resolved_model = model or PROVIDER_DEFAULTS.get(provider, "")
 
     # Read existing layers
     existing_meta = read_meta(path)
@@ -248,6 +274,8 @@ def _enrich(
         structure=extraction.structure,
         key_id=derive_key_id(creation_key) if creation_key else "",
         signature=None,
+        **({} if audio_kwargs else {"media_type": media_type}),
+        **audio_kwargs,
     )
 
     # Sign layer if key provided
