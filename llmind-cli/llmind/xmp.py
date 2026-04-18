@@ -10,7 +10,7 @@ import json
 import xml.etree.ElementTree as ET
 from xml.sax.saxutils import escape as _xml_escape
 
-from llmind.models import Layer, LLMindMeta
+from llmind.models import Layer, LLMindMeta, Segment
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -70,6 +70,17 @@ def layer_to_dict(layer: Layer, include_signature: bool = True) -> dict[str, obj
     }
     if include_signature:
         d["signature"] = layer.signature
+    # Audio-only fields — serialized only when populated, preserving
+    # backwards-compat signatures for existing image/pdf layers.
+    if layer.media_type and layer.media_type != "image":
+        d["media_type"] = layer.media_type
+    if layer.duration_seconds is not None:
+        d["duration_seconds"] = layer.duration_seconds
+    if layer.segments is not None:
+        d["segments"] = [
+            {"start": s.start, "end": s.end, "text": s.text}
+            for s in layer.segments
+        ]
     return d
 
 
@@ -186,6 +197,24 @@ def parse_xmp(xmp_string: str) -> LLMindMeta:
                 structure=dict(d.get("structure") or {}),
                 key_id=str(d["key_id"]),
                 signature=d.get("signature"),
+                segments=(
+                    tuple(
+                        Segment(
+                            start=float(seg["start"]),
+                            end=float(seg["end"]),
+                            text=str(seg["text"]),
+                        )
+                        for seg in d["segments"]
+                    )
+                    if d.get("segments") is not None
+                    else None
+                ),
+                duration_seconds=(
+                    float(d["duration_seconds"])
+                    if d.get("duration_seconds") is not None
+                    else None
+                ),
+                media_type=str(d.get("media_type") or "image"),
             )
             for d in history_data
         ]
