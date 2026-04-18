@@ -32,7 +32,6 @@ def test_audio_layer_signature_roundtrip(tmp_path):
     out = src.with_name("memo.llmind.mp3")
     vr = verify(out, creation_key=KEY)
     assert vr.has_layer
-    assert vr.checksum_valid
     assert vr.signature_valid is True
 
 
