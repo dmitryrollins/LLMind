@@ -158,3 +158,39 @@ def _query_whisper_local(path: Path, model: str) -> AudioExtraction:
         language=str(info.language or "en"),
         duration_seconds=float(info.duration or 0.0),
     )
+
+
+_UNSUPPORTED = {"anthropic", "ollama"}
+
+
+def query_audio(
+    path: Path,
+    provider: str,
+    model: str | None = None,
+) -> AudioExtraction:
+    """Dispatch audio transcription to the requested provider.
+
+    Supported: openai, gemini, whisper_local.
+    Raises UnsupportedProviderError for anthropic, ollama, or unknown providers.
+    """
+    if provider in _UNSUPPORTED:
+        raise UnsupportedProviderError(
+            f"Provider {provider!r} does not support audio. "
+            f"Supported: openai, gemini, whisper_local."
+        )
+    if provider not in AUDIO_PROVIDER_DEFAULTS:
+        raise UnsupportedProviderError(
+            f"Unknown audio provider {provider!r}. "
+            f"Supported: openai, gemini, whisper_local."
+        )
+    resolved_model = model or AUDIO_PROVIDER_DEFAULTS[provider]
+    if provider == "openai":
+        return _query_openai(
+            path, model=resolved_model,
+            summarizer=AUDIO_SUMMARIZER_DEFAULTS["openai"],
+        )
+    if provider == "gemini":
+        return _query_gemini(path, model=resolved_model)
+    if provider == "whisper_local":
+        return _query_whisper_local(path, model=resolved_model)
+    raise UnsupportedProviderError(f"Unreachable provider: {provider!r}")

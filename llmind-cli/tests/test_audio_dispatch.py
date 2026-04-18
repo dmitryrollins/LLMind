@@ -143,3 +143,39 @@ def test_whisper_local_provider(tmp_path):
     assert result.duration_seconds == 2.0
     assert result.language == "en"
     assert len(result.segments) == 2
+
+
+from llmind.audio import query_audio
+
+
+def test_query_audio_dispatches_openai(tmp_path):
+    dst = tmp_path / "copy.wav"
+    dst.write_bytes(FIXTURE_WAV.read_bytes())
+    expected = AudioExtraction(
+        text="t", summary="s", segments=(), language="en", duration_seconds=1.0,
+    )
+    with patch("llmind.audio._query_openai", return_value=expected) as m:
+        result = query_audio(dst, provider="openai")
+    assert result is expected
+    m.assert_called_once()
+
+
+def test_query_audio_rejects_anthropic(tmp_path):
+    dst = tmp_path / "copy.wav"
+    dst.write_bytes(FIXTURE_WAV.read_bytes())
+    with pytest.raises(UnsupportedProviderError, match="anthropic"):
+        query_audio(dst, provider="anthropic")
+
+
+def test_query_audio_rejects_ollama(tmp_path):
+    dst = tmp_path / "copy.wav"
+    dst.write_bytes(FIXTURE_WAV.read_bytes())
+    with pytest.raises(UnsupportedProviderError, match="ollama"):
+        query_audio(dst, provider="ollama")
+
+
+def test_query_audio_unknown_provider_raises(tmp_path):
+    dst = tmp_path / "copy.wav"
+    dst.write_bytes(FIXTURE_WAV.read_bytes())
+    with pytest.raises(UnsupportedProviderError):
+        query_audio(dst, provider="bogus")
