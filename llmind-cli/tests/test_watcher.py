@@ -211,3 +211,13 @@ def test_run_watch_with_observer(tmp_path: Path) -> None:
     t.start()
     t.join(timeout=5.0)
     assert not t.is_alive(), "run_watch should have exited"
+
+
+from llmind.safety import is_safe_file
+
+
+def test_watcher_accepts_audio_files(tmp_path):
+    for name in ["a.mp3", "b.wav", "c.m4a"]:
+        p = tmp_path / name
+        p.write_bytes(b"\x00" * 64)
+        assert is_safe_file(p) is True

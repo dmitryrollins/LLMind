@@ -6,11 +6,11 @@
 
 ## What it does
 
-LLMind takes a standard **JPEG, PNG, or PDF** file and enriches it with a structured metadata layer containing:
+LLMind takes a standard **JPEG, PNG, PDF, MP3, WAV, or M4A** file and enriches it with a structured metadata layer containing:
 
-- **Extracted text** — every word, badge, watermark, and label from the file
-- **Visual description** — a natural-language description of layout, logos, icons, and design elements
-- **Document structure** — regions, figures, and tables mapped as JSON
+- **Extracted text** — every word, badge, watermark, label (images/PDF) or spoken-word transcript (audio)
+- **Visual description** or **audio summary** — natural-language description
+- **Document structure** (image/PDF) or **timestamped segments** (audio) — mapped as JSON
 
 All of this is embedded as **XMP metadata** directly inside the file's binary — no external database, no sidecar file. The enriched file opens normally in any viewer or editor.
 
@@ -22,6 +22,21 @@ All of this is embedded as **XMP metadata** directly inside the file's binary �
 2. **Configure** your Anthropic API key (used in-browser only, never stored)
 3. **Convert** — the file is analyzed by Claude's vision model
 4. **Download** the enriched `.llmind` file and your creation key
+
+---
+
+## Audio support (CLI-only)
+
+Audio files are transcribed and enriched with:
+
+- Full transcript (`llmind:text`)
+- 1–2 sentence summary (`llmind:description`)
+- Timestamped segments (`llmind:segments`)
+- Duration in seconds (`llmind:duration_seconds`)
+- Media type marker (`llmind:media_type="audio"`)
+
+Supported providers: OpenAI Whisper, Gemini, local `faster-whisper`.
+Install the local provider with: `pip install -e .[whisper-local]`.
 
 ---
 
