@@ -76,3 +76,33 @@ def test_openai_provider_returns_extraction(tmp_path):
     assert result.summary == "A short greeting."
     assert len(result.segments) == 2
     assert result.segments[0].text == "hello"
+
+
+from llmind.audio import _query_gemini
+
+
+GEMINI_JSON = (
+    '{"transcript":"hello world","language":"en","duration":2.0,'
+    '"summary":"A greeting.",'
+    '"segments":[{"start":0.0,"end":1.0,"text":"hello"},'
+    '{"start":1.0,"end":2.0,"text":"world"}]}'
+)
+
+
+def test_gemini_provider_parses_json(tmp_path):
+    dst = tmp_path / "copy.wav"
+    dst.write_bytes(FIXTURE_WAV.read_bytes())
+
+    fake_file = MagicMock(); fake_file.name = "files/xyz"
+    fake_client = MagicMock()
+    fake_client.files.upload.return_value = fake_file
+    response = MagicMock()
+    response.text = GEMINI_JSON
+    fake_client.models.generate_content.return_value = response
+
+    with patch("llmind.audio._get_gemini_client", return_value=fake_client):
+        result = _query_gemini(dst, model="gemini-2.5-flash")
+    assert result.text == "hello world"
+    assert result.summary == "A greeting."
+    assert result.duration_seconds == 2.0
+    assert len(result.segments) == 2
