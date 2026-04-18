@@ -4,6 +4,7 @@ from rich.table import Table
 from pathlib import Path
 from llmind import __version__
 from llmind.embedder import EMBEDDING_DEFAULTS
+from llmind.safety import is_audio_file
 
 console = Console()
 
@@ -228,6 +229,9 @@ def embed(paths, provider, model, api_key, base_url, force):
             xmp_string = read_xmp_png(path)
         elif suffix == ".pdf":
             xmp_string = read_xmp_pdf(path)
+        elif is_audio_file(path):
+            from llmind.audio_injector import read_xmp_audio
+            xmp_string = read_xmp_audio(path)
         else:
             console.print(f"[yellow]SKIP[/yellow] {path.name} (unsupported format)")
             continue
