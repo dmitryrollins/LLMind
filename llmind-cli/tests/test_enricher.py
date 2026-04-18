@@ -239,3 +239,15 @@ def test_reenrich_updates_in_place(mock_query, mock_inject, tmp_path: Path) -> N
     assert result.success is True
     assert result.path == llmind_file
     assert llmind_file.exists()
+
+
+def test_is_already_enriched_audio_files():
+    assert is_already_enriched_file(Path("voice.llmind.mp3"))
+    assert is_already_enriched_file(Path("recording.llmind.wav"))
+    assert is_already_enriched_file(Path("memo.llmind.m4a"))
+
+
+def test_is_already_enriched_fresh_audio_is_not():
+    assert not is_already_enriched_file(Path("voice.mp3"))
+    assert not is_already_enriched_file(Path("recording.wav"))
+    assert not is_already_enriched_file(Path("memo.m4a"))
