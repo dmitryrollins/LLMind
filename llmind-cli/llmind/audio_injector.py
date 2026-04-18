@@ -196,3 +196,40 @@ def _remove_llmind_xmp_m4a(path: Path) -> bool:
         return False
     path.write_bytes(new_data)
     return True
+
+
+# ── Public dispatch ─────────────────────────────────────────────────────────
+
+def inject_audio(path: Path, xmp_string: str) -> None:
+    """Inject XMP into an audio file, replacing any prior LLMind XMP packet."""
+    suffix = path.suffix.lower()
+    if suffix == ".mp3":
+        _inject_mp3(path, xmp_string)
+    elif suffix == ".wav":
+        _inject_wav(path, xmp_string)
+    elif suffix == ".m4a":
+        _inject_m4a(path, xmp_string)
+    else:
+        raise ValueError(f"Unsupported audio format: {suffix}")
+
+
+def read_xmp_audio(path: Path) -> str | None:
+    suffix = path.suffix.lower()
+    if suffix == ".mp3":
+        return _read_xmp_mp3(path)
+    if suffix == ".wav":
+        return _read_xmp_wav(path)
+    if suffix == ".m4a":
+        return _read_xmp_m4a(path)
+    raise ValueError(f"Unsupported audio format: {suffix}")
+
+
+def remove_llmind_xmp_audio(path: Path) -> bool:
+    suffix = path.suffix.lower()
+    if suffix == ".mp3":
+        return _remove_llmind_xmp_mp3(path)
+    if suffix == ".wav":
+        return _remove_llmind_xmp_wav(path)
+    if suffix == ".m4a":
+        return _remove_llmind_xmp_m4a(path)
+    raise ValueError(f"Unsupported audio format: {suffix}")
