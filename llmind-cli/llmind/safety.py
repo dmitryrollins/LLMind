@@ -3,7 +3,13 @@ from pathlib import Path
 _BLOCKED_NAMES: frozenset[str] = frozenset(
     {"Thumbs.db", "desktop.ini", ".DS_Store", "Icon\r"}
 )
-_SUPPORTED_EXTENSIONS: frozenset[str] = frozenset({".jpg", ".jpeg", ".png", ".pdf"})
+_IMAGE_EXTENSIONS: frozenset[str] = frozenset({".jpg", ".jpeg", ".png", ".pdf"})
+AUDIO_EXTENSIONS: frozenset[str] = frozenset({".mp3", ".wav", ".m4a"})
+_SUPPORTED_EXTENSIONS: frozenset[str] = _IMAGE_EXTENSIONS | AUDIO_EXTENSIONS
+
+
+def is_audio_file(path: Path) -> bool:
+    return path.suffix.lower() in AUDIO_EXTENSIONS
 
 
 def is_safe_file(path: Path) -> bool:
@@ -19,7 +25,6 @@ def is_safe_file(path: Path) -> bool:
             return False
         if path.name.startswith("."):
             return False
-        # Reject files inside hidden directories or .llmind-keys
         for part in path.parts[:-1]:
             if part.startswith(".") or part == ".llmind-keys":
                 return False
