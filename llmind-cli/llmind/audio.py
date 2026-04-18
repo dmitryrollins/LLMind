@@ -32,3 +32,38 @@ AUDIO_SUMMARIZER_DEFAULTS: dict[str, str] = {
     "gemini": "gemini-2.5-flash",   # same model handles both transcript + summary
     "whisper_local": "",            # extractive summary, no model
 }
+
+
+def _get_openai_client():
+    from openai import OpenAI
+    return OpenAI()
+
+
+def _query_openai(path: Path, model: str, summarizer: str) -> AudioExtraction:
+    client = _get_openai_client()
+    with open(path, "rb") as fh:
+        resp = client.audio.transcriptions.create(
+            model=model,
+            file=fh,
+            response_format="verbose_json",
+        )
+    segments = tuple(
+        Segment(start=float(s.start), end=float(s.end), text=str(s.text).strip())
+        for s in (resp.segments or [])
+    )
+    transcript = str(resp.text or "").strip()
+    summary_resp = client.chat.completions.create(
+        model=summarizer,
+        messages=[
+            {"role": "system", "content": "Summarize the following transcript in 1-2 sentences."},
+            {"role": "user", "content": transcript or "(empty transcript)"},
+        ],
+    )
+    summary = str(summary_resp.choices[0].message.content or "").strip()
+    return AudioExtraction(
+        text=transcript,
+        summary=summary,
+        segments=segments,
+        language=str(resp.language or "en"),
+        duration_seconds=float(resp.duration or 0.0),
+    )
