@@ -9,6 +9,8 @@ import struct
 import zlib
 from pathlib import Path
 
+from llmind.safety import is_audio_file
+
 _XMP_NS = b"http://ns.adobe.com/xap/1.0/\x00"
 _LLMIND_MARKER = b"https://llmind.org/ns/1.0/"
 
@@ -250,6 +252,9 @@ def inject(path: Path, xmp_string: str) -> None:
         _inject_png(path, xmp_string)
     elif suffix == ".pdf":
         _inject_pdf(path, xmp_string)
+    elif is_audio_file(path):
+        from llmind.audio_injector import inject_audio
+        inject_audio(path, xmp_string)
     else:
         raise ValueError(f"Unsupported format for inject: {path.suffix}")
 
@@ -263,5 +268,8 @@ def remove_llmind_xmp(path: Path) -> bool:
         return _remove_llmind_xmp_png(path)
     elif suffix == ".pdf":
         return _remove_llmind_xmp_pdf(path)
+    elif is_audio_file(path):
+        from llmind.audio_injector import remove_llmind_xmp_audio
+        return remove_llmind_xmp_audio(path)
     else:
         raise ValueError(f"Unsupported format for remove_llmind_xmp: {path.suffix}")

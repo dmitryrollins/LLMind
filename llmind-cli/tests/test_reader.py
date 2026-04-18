@@ -93,3 +93,50 @@ def test_read_returns_llmind_meta_after_inject_pdf(pdf_file: Path, sample_layer)
     assert isinstance(result, LLMindMeta)
     assert result.layer_count == 1
     assert result.current.checksum == sample_layer.checksum
+
+
+import shutil
+from pathlib import Path
+
+from llmind.audio_injector import inject_audio
+from llmind.reader import read, has_llmind_layer
+
+AUDIO_FIX = Path(__file__).parent / "fixtures" / "audio"
+MINIMAL_XMP = (
+    '<?xpacket begin="\ufeff" id="W5M0MpCehiHzreSzNTczkc9d"?>'
+    '<x:xmpmeta xmlns:x="adobe:ns:meta/">'
+    '  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">'
+    '    <rdf:Description rdf:about=""'
+    '    xmlns:llmind="https://llmind.org/ns/1.0/"'
+    '    llmind:version="1"'
+    '    llmind:format_version="1.0"'
+    '    llmind:generator="llmind-cli/0.1.0"'
+    '    llmind:generator_model="whisper-1"'
+    '    llmind:timestamp="2026-04-18T00:00:00Z"'
+    '    llmind:language="en"'
+    '    llmind:checksum="c"'
+    '    llmind:key_id=""'
+    '    llmind:signature=""'
+    '    llmind:layer_count="1"'
+    '    llmind:immutable="true"'
+    '    >'
+    '      <llmind:description>hi</llmind:description>'
+    '      <llmind:text>hi</llmind:text>'
+    '      <llmind:structure>{}</llmind:structure>'
+    '      <llmind:history>[{"version":1,"timestamp":"2026-04-18T00:00:00Z","generator":"llmind-cli/0.1.0","generator_model":"whisper-1","checksum":"c","language":"en","description":"hi","text":"hi","structure":{},"key_id":"","signature":null,"media_type":"audio","duration_seconds":1.0,"segments":[{"start":0.0,"end":1.0,"text":"hi"}]}]</llmind:history>'
+    '    </rdf:Description>'
+    '  </rdf:RDF>'
+    '</x:xmpmeta>'
+    '<?xpacket end="w"?>'
+)
+
+
+def test_reader_reads_audio_layer(tmp_path):
+    dst = tmp_path / "silent.mp3"
+    shutil.copy(AUDIO_FIX / "silent.mp3", dst)
+    inject_audio(dst, MINIMAL_XMP)
+    assert has_llmind_layer(dst) is True
+    meta = read(dst)
+    assert meta is not None
+    assert meta.current.media_type == "audio"
+    assert meta.current.duration_seconds == 1.0
