@@ -111,3 +111,50 @@ def _query_gemini(path: Path, model: str) -> AudioExtraction:
         language=str(data.get("language", "en")),
         duration_seconds=float(data.get("duration", 0.0)),
     )
+
+
+import re as _re
+
+
+def _extractive_summary(text: str) -> str:
+    """Return first sentence + longest sentence (deduped) as a 2-line summary."""
+    text = text.strip()
+    if not text:
+        return ""
+    sentences = [s.strip() for s in _re.split(r"(?<=[.!?])\s+", text) if s.strip()]
+    if len(sentences) <= 1:
+        return sentences[0] if sentences else ""
+    first = sentences[0]
+    longest = max(sentences[1:], key=len)
+    if longest == first:
+        return first
+    return f"{first} {longest}"
+
+
+def _load_whisper_local(model_size: str):
+    try:
+        from faster_whisper import WhisperModel
+    except ImportError as exc:
+        raise UnsupportedProviderError(
+            "Install `faster-whisper` to use the whisper_local provider."
+        ) from exc
+    return WhisperModel(model_size, compute_type="int8")
+
+
+def _query_whisper_local(path: Path, model: str) -> AudioExtraction:
+    whisper = _load_whisper_local(model or "base")
+    segments_iter, info = whisper.transcribe(str(path))
+    segments: list[Segment] = []
+    parts: list[str] = []
+    for s in segments_iter:
+        text = str(s.text).strip()
+        segments.append(Segment(start=float(s.start), end=float(s.end), text=text))
+        parts.append(text)
+    transcript = "\n".join(parts)
+    return AudioExtraction(
+        text=transcript,
+        summary=_extractive_summary(transcript.replace("\n", " ")),
+        segments=tuple(segments),
+        language=str(info.language or "en"),
+        duration_seconds=float(info.duration or 0.0),
+    )

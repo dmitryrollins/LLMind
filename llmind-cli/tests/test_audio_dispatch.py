@@ -106,3 +106,40 @@ def test_gemini_provider_parses_json(tmp_path):
     assert result.summary == "A greeting."
     assert result.duration_seconds == 2.0
     assert len(result.segments) == 2
+
+
+from llmind.audio import _query_whisper_local, _extractive_summary
+
+
+def test_extractive_summary_empty():
+    assert _extractive_summary("") == ""
+
+
+def test_extractive_summary_short():
+    assert _extractive_summary("Only one sentence.") == "Only one sentence."
+
+
+def test_extractive_summary_picks_first_and_longest():
+    text = "Hi. This is a much longer informative sentence with details. Bye."
+    s = _extractive_summary(text)
+    assert "Hi." in s
+    assert "This is a much longer informative sentence with details." in s
+
+
+def test_whisper_local_provider(tmp_path):
+    dst = tmp_path / "copy.wav"
+    dst.write_bytes(FIXTURE_WAV.read_bytes())
+
+    seg1 = MagicMock(); seg1.start = 0.0; seg1.end = 1.0; seg1.text = " hello"
+    seg2 = MagicMock(); seg2.start = 1.0; seg2.end = 2.0; seg2.text = " world"
+    info = MagicMock(); info.language = "en"; info.duration = 2.0
+
+    fake_model = MagicMock()
+    fake_model.transcribe.return_value = (iter([seg1, seg2]), info)
+
+    with patch("llmind.audio._load_whisper_local", return_value=fake_model):
+        result = _query_whisper_local(dst, model="base")
+    assert result.text == "hello\nworld"
+    assert result.duration_seconds == 2.0
+    assert result.language == "en"
+    assert len(result.segments) == 2
