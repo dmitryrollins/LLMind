@@ -25,7 +25,7 @@ def main() -> None:
 @click.option("--key-output", type=click.Path(path_type=Path), default=None, help="Directory to save generated key")
 @click.option(
     "--provider",
-    type=click.Choice(["ollama", "anthropic", "openai", "gemini"]),
+    type=click.Choice(["ollama", "anthropic", "openai", "gemini", "whisper_local"]),
     default="ollama",
     show_default=True,
     help="Vision AI provider to use.",
@@ -74,7 +74,7 @@ def enrich(paths, model, key_path, force, generate_key, key_output, provider):
 @click.option("--force", is_flag=True, default=False, help="Re-enrich even if already fresh")
 @click.option(
     "--provider",
-    type=click.Choice(["ollama", "anthropic", "openai", "gemini"]),
+    type=click.Choice(["ollama", "anthropic", "openai", "gemini", "whisper_local"]),
     default="ollama",
     show_default=True,
 )
@@ -438,7 +438,7 @@ def search(query, paths, mode, vector_weight, provider, model, api_key, base_url
 @click.option("--key", "key_path", type=click.Path(path_type=Path), default=None)
 @click.option(
     "--provider",
-    type=click.Choice(["ollama", "anthropic", "openai", "gemini"]),
+    type=click.Choice(["ollama", "anthropic", "openai", "gemini", "whisper_local"]),
     default="ollama",
     show_default=True,
     help="Vision AI provider to use.",

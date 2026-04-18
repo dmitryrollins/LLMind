@@ -77,3 +77,29 @@ def test_flac_not_supported_yet(tmp_path):
     p = tmp_path / "song.flac"
     p.write_bytes(b"fLaC\x00")
     assert is_safe_file(p) is False
+
+
+from llmind.safety import audio_size_ok
+
+
+def test_audio_size_ok_small_cloud(tmp_path):
+    p = tmp_path / "a.mp3"
+    p.write_bytes(b"\x00" * 1024)
+    assert audio_size_ok(p, provider="openai") is True
+
+
+def test_audio_size_ok_large_cloud_rejected(tmp_path):
+    p = tmp_path / "a.mp3"
+    with open(p, "wb") as fh:
+        fh.seek(26 * 1024 * 1024 - 1)
+        fh.write(b"\x00")
+    assert audio_size_ok(p, provider="openai") is False
+    assert audio_size_ok(p, provider="gemini") is False
+
+
+def test_audio_size_ok_large_local_accepted(tmp_path):
+    p = tmp_path / "a.mp3"
+    with open(p, "wb") as fh:
+        fh.seek(26 * 1024 * 1024 - 1)
+        fh.write(b"\x00")
+    assert audio_size_ok(p, provider="whisper_local") is True

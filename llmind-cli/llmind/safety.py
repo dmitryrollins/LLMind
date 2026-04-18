@@ -12,6 +12,21 @@ def is_audio_file(path: Path) -> bool:
     return path.suffix.lower() in AUDIO_EXTENSIONS
 
 
+_CLOUD_AUDIO_LIMIT_BYTES = 25 * 1024 * 1024   # OpenAI Whisper hard limit
+_CLOUD_AUDIO_PROVIDERS = frozenset({"openai", "gemini"})
+
+
+def audio_size_ok(path: Path, provider: str) -> bool:
+    """Return True if the file's size is within the provider's audio limit."""
+    try:
+        size = path.stat().st_size
+    except OSError:
+        return False
+    if provider in _CLOUD_AUDIO_PROVIDERS:
+        return size <= _CLOUD_AUDIO_LIMIT_BYTES
+    return True
+
+
 def is_safe_file(path: Path) -> bool:
     """Return True if path is safe and supported for enrichment."""
     try:

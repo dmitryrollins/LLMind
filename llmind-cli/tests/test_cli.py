@@ -340,3 +340,11 @@ def test_watch_enrich_skip_and_error(tmp_path: Path) -> None:
         # Test error path
         with patch("llmind.enricher.enrich", return_value=error_result):
             captured_fn["fn"](tmp_path / "x.jpg")
+
+
+def test_cli_enrich_accepts_whisper_local_provider(tmp_path):
+    fixture = tmp_path / "memo.mp3"
+    fixture.write_bytes(b"\x00" * 64)
+    runner = CliRunner()
+    result = runner.invoke(main, ["enrich", "--provider", "whisper_local", "--help"])
+    assert result.exit_code == 0

@@ -151,6 +151,14 @@ def _reenrich(
     if not is_safe_file(path):
         raise ValueError(f"Unsafe file: {path}")
 
+    if is_audio_file(path):
+        from llmind.safety import audio_size_ok
+        if not audio_size_ok(path, provider):
+            raise ValueError(
+                f"Audio file exceeds 25 MB limit for provider {provider!r}. "
+                f"Use --provider whisper_local for larger files."
+            )
+
     checksum = sha256_file(path)
     if not force and is_fresh(path, checksum):
         return _skip_result(path)
@@ -231,6 +239,14 @@ def _enrich(
 
     if not is_safe_file(path):
         raise ValueError(f"Unsafe file: {path}")
+
+    if is_audio_file(path):
+        from llmind.safety import audio_size_ok
+        if not audio_size_ok(path, provider):
+            raise ValueError(
+                f"Audio file exceeds 25 MB limit for provider {provider!r}. "
+                f"Use --provider whisper_local for larger files."
+            )
 
     checksum = sha256_file(path)
 
