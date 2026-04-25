@@ -1,10 +1,15 @@
 name: Bump Homebrew formula
 
-# Auto-bumps the llmind-cli formula in dmitryrollins/homebrew-llmind whenever
-# a `cli-v*` tag is pushed to this repo. Opens a PR in the tap with the new
-# url, sha256, version, and regenerated Python resources.
+# Builds a Python sdist for llmind-cli, uploads it as a GitHub release asset,
+# then bumps dmitryrollins/homebrew-llmind to point at it.
 #
-# Required secret (configure in this repo's Settings → Secrets → Actions):
+# Why an sdist instead of the auto-generated tag tarball?
+# `brew update-python-resources` runs `pip install` against the source URL to
+# resolve the transitive dependency tree. The auto-archive of this monorepo
+# has pyproject.toml at llmind-cli/pyproject.toml — pip doesn't know to
+# descend, so resolution fails. An sdist has pyproject.toml at the root.
+#
+# Required secret (Settings → Secrets → Actions on this repo):
 #   HOMEBREW_TAP_TOKEN — fine-grained PAT with Contents: write + Pull requests:
 #                        write on dmitryrollins/homebrew-llmind.
 
@@ -19,7 +24,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write   # needed to create the release and upload the sdist asset
 
 jobs:
   bump:
@@ -31,7 +36,7 @@ jobs:
       FORMULA: llmind-cli
 
     steps:
-      - name: Resolve tag, version, source URL, sha256
+      - name: Resolve tag and version
         id: meta
         run: |
           set -euo pipefail
@@ -45,14 +50,55 @@ jobs:
             exit 1
           fi
           version="${tag#cli-v}"
-          url="https://github.com/${{ github.repository }}/archive/refs/tags/${tag}.tar.gz"
-          sha=$(curl -fsSL "$url" | shasum -a 256 | awk '{print $1}')
           {
             echo "tag=$tag"
             echo "version=$version"
-            echo "url=$url"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Checkout LLMind source at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.meta.outputs.tag }}
+          path: src
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build sdist
+        id: sdist
+        working-directory: src/llmind-cli
+        run: |
+          set -euo pipefail
+          pip install --upgrade build
+          python -m build --sdist
+          sdist=$(ls dist/llmind_cli-*.tar.gz | head -n 1)
+          [[ -n "$sdist" ]] || { echo "::error::sdist not produced"; exit 1; }
+          name=$(basename "$sdist")
+          path="$PWD/$sdist"
+          sha=$(shasum -a 256 "$path" | awk '{print $1}')
+          {
+            echo "path=$path"
+            echo "name=$name"
             echo "sha=$sha"
           } >> "$GITHUB_OUTPUT"
+
+      - name: Ensure GitHub release exists, upload sdist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          SDIST_PATH: ${{ steps.sdist.outputs.path }}
+        run: |
+          set -euo pipefail
+          if ! gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "${{ github.repository }}" \
+              --title "llmind-cli ${VERSION}" \
+              --notes "Automated release built by .github/workflows/release-homebrew.yml."
+          fi
+          gh release upload "$TAG" --repo "${{ github.repository }}" \
+            "$SDIST_PATH" --clobber
 
       - name: Checkout tap
         uses: actions/checkout@v4
@@ -70,16 +116,25 @@ jobs:
           mv "$GITHUB_WORKSPACE/tap" "$target"
           echo "path=$target" >> "$GITHUB_OUTPUT"
 
-      - name: Update url, sha256, version
+      - name: Sync formula skeleton from source repo
         env:
-          URL: ${{ steps.meta.outputs.url }}
-          SHA: ${{ steps.meta.outputs.sha }}
+          TAP_PATH: ${{ steps.tap.outputs.path }}
+        run: |
+          set -euo pipefail
+          # Copy the canonical formula from the tagged source tree into the tap.
+          # Structural changes (new depends_on, livecheck tweaks, etc.) flow
+          # this way; sed below patches in the per-release url/sha/version.
+          cp "$GITHUB_WORKSPACE/src/packaging/homebrew/llmind-cli.rb" \
+             "$TAP_PATH/Formula/llmind-cli.rb"
+
+      - name: Patch url, sha256, version
+        env:
+          URL: https://github.com/${{ github.repository }}/releases/download/${{ steps.meta.outputs.tag }}/${{ steps.sdist.outputs.name }}
+          SHA: ${{ steps.sdist.outputs.sha }}
           VERSION: ${{ steps.meta.outputs.version }}
           FORMULA_PATH: ${{ steps.tap.outputs.path }}/Formula/llmind-cli.rb
         run: |
           set -euo pipefail
-          # Match exactly 2 leading spaces so we don't touch indented
-          # resource blocks (those use 4-space indent).
           /usr/bin/sed -i '' -E "s|^  url \"[^\"]*\"|  url \"${URL}\"|" "$FORMULA_PATH"
           /usr/bin/sed -i '' -E "s|^  sha256 \"[^\"]*\"|  sha256 \"${SHA}\"|" "$FORMULA_PATH"
           /usr/bin/sed -i '' -E "s|^  version \"[^\"]*\"|  version \"${VERSION}\"|" "$FORMULA_PATH"
@@ -100,8 +155,8 @@ jobs:
           GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           TAG: ${{ steps.meta.outputs.tag }}
           VERSION: ${{ steps.meta.outputs.version }}
-          URL: ${{ steps.meta.outputs.url }}
-          SHA: ${{ steps.meta.outputs.sha }}
+          URL: https://github.com/${{ github.repository }}/releases/download/${{ steps.meta.outputs.tag }}/${{ steps.sdist.outputs.name }}
+          SHA: ${{ steps.sdist.outputs.sha }}
         working-directory: ${{ steps.tap.outputs.path }}
         run: |
           set -euo pipefail
