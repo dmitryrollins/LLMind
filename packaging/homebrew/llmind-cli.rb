@@ -5,9 +5,10 @@ class LlmindCli < Formula
   homepage "https://github.com/dmitryrollins/LLMind"
   # Source is the Python sdist uploaded as a release asset on each cli-vX.Y.Z
   # tag (built and uploaded by .github/workflows/release-homebrew.yml).
-  # Update `url` and `sha256` together when bumping; brew parses the version
-  # from the sdist filename.
+  # `version` is explicit because `brew update-python-resources` requires it
+  # even though brew can infer the same value from the sdist filename.
   url "https://github.com/dmitryrollins/LLMind/releases/download/cli-v0.1.0/llmind_cli-0.1.0.tar.gz"
+  version "0.1.0"
   sha256 "REPLACE_WITH_SHA256_OF_RELEASE_TARBALL"
   license "MIT"
 
