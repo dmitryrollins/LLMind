@@ -99,6 +99,10 @@ jobs:
           fi
           gh release upload "$TAG" --repo "${{ github.repository }}" \
             "$SDIST_PATH" --clobber
+          # GitHub's release-asset CDN can return 404 for ~10–20 s after upload
+          # while the asset propagates. Wait so the audit step's URL check
+          # (and brew install's download) succeeds.
+          sleep 30
 
       - name: Checkout tap
         uses: actions/checkout@v4
@@ -127,17 +131,18 @@ jobs:
           cp "$GITHUB_WORKSPACE/src/packaging/homebrew/llmind-cli.rb" \
              "$TAP_PATH/Formula/llmind-cli.rb"
 
-      - name: Patch url, sha256, version
+      - name: Patch url and sha256
         env:
           URL: https://github.com/${{ github.repository }}/releases/download/${{ steps.meta.outputs.tag }}/${{ steps.sdist.outputs.name }}
           SHA: ${{ steps.sdist.outputs.sha }}
-          VERSION: ${{ steps.meta.outputs.version }}
           FORMULA_PATH: ${{ steps.tap.outputs.path }}/Formula/llmind-cli.rb
         run: |
           set -euo pipefail
+          # Match exactly two leading spaces so we don't touch indented
+          # resource blocks. brew parses the version from the URL filename,
+          # so no `version` directive to patch.
           /usr/bin/sed -i '' -E "s|^  url \"[^\"]*\"|  url \"${URL}\"|" "$FORMULA_PATH"
           /usr/bin/sed -i '' -E "s|^  sha256 \"[^\"]*\"|  sha256 \"${SHA}\"|" "$FORMULA_PATH"
-          /usr/bin/sed -i '' -E "s|^  version \"[^\"]*\"|  version \"${VERSION}\"|" "$FORMULA_PATH"
 
       # Resources are static (committed in packaging/homebrew/llmind-cli.rb).
       # `brew update-python-resources` was tried but its --uploaded-prior-to=24h

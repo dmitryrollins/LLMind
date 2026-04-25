@@ -68,9 +68,13 @@ for pkg in report["install"]:
     sdist = next((u for u in data["urls"] if u["packagetype"] == "sdist"), None)
     if not sdist:
         raise SystemExit(f"no sdist on PyPI for {name}=={version}")
+    # brew audit requires PEP 503-normalized resource names (underscores
+    # replaced with hyphens, lowercased only when the package itself uses
+    # lowercase on PyPI — preserve canonical capitalization otherwise).
+    canonical = name.replace("_", "-")
     blocks.append((
-        name.lower(),
-        f'  resource "{name}" do\n'
+        canonical.lower(),
+        f'  resource "{canonical}" do\n'
         f'    url "{sdist["url"]}"\n'
         f'    sha256 "{sdist["digests"]["sha256"]}"\n'
         f'  end',

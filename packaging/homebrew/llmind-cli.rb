@@ -4,11 +4,9 @@ class LlmindCli < Formula
   desc "Embed signed semantic-metadata layers into images, PDFs, and audio files"
   homepage "https://github.com/dmitryrollins/LLMind"
   # Source is the Python sdist uploaded as a release asset on each cli-vX.Y.Z
-  # tag (built and uploaded by .github/workflows/release-homebrew.yml).
-  # `version` is explicit because `brew update-python-resources` requires it
-  # even though brew can infer the same value from the sdist filename.
+  # tag (built and uploaded by .github/workflows/release-homebrew.yml). Brew
+  # parses the version from the sdist filename, so no explicit `version`.
   url "https://github.com/dmitryrollins/LLMind/releases/download/cli-v0.1.0/llmind_cli-0.1.0.tar.gz"
-  version "0.1.0"
   sha256 "REPLACE_WITH_SHA256_OF_RELEASE_TARBALL"
   license "MIT"
 
@@ -81,7 +79,7 @@ class LlmindCli < Formula
     sha256 "2fa77c6fd8940f116ee1d6b94a2f90b13b5ea8d019b98bc8bafdcabcdd9bdbed"
   end
 
-  resource "docstring_parser" do
+  resource "docstring-parser" do
     url "https://files.pythonhosted.org/packages/e0/4d/f332313098c1de1b2d2ff91cf2674415cc7cddab2ca1b01ae29774bd5fdf/docstring_parser-0.18.0.tar.gz"
     sha256 "292510982205c12b1248696f44959db3cdd1740237a968ea1e2e7a900eeb2015"
   end
@@ -171,7 +169,7 @@ class LlmindCli < Formula
     sha256 "697a8ecd6d98891189184ca1fa05d1bb00e2f84b5977c481452050549c8a72cf"
   end
 
-  resource "pyasn1_modules" do
+  resource "pyasn1-modules" do
     url "https://files.pythonhosted.org/packages/e9/e6/78ebbb10a8c8e4b61a59249394a4a594c1a7af95593dc933a349c8d00964/pyasn1_modules-0.4.2.tar.gz"
     sha256 "677091de870a80aae844b1ca6134f54652fa2c8c5a52aa396440ac3106e941e6"
   end
@@ -186,7 +184,7 @@ class LlmindCli < Formula
     sha256 "af09e9d1d09f4e7fe37145c1f577e1d61ceb9a41924bf0094a36506285d0a84d"
   end
 
-  resource "pydantic_core" do
+  resource "pydantic-core" do
     url "https://files.pythonhosted.org/packages/2a/ef/f7abb56c49382a246fd2ce9c799691e3c3e7175ec74b14d99e798bcddb1a/pydantic_core-2.46.3.tar.gz"
     sha256 "41c178f65b8c29807239d47e6050262eb6bf84eb695e41101e62e38df4a5bc2c"
   end
@@ -231,7 +229,7 @@ class LlmindCli < Formula
     sha256 "ba561c48a67c5958007083d386c3295464928b01faa735ab8547c5692e87f464"
   end
 
-  resource "typing_extensions" do
+  resource "typing-extensions" do
     url "https://files.pythonhosted.org/packages/72/94/1a15dd82efb362ac84269196e94cf00f187f7ed21c242792a923cdb1c61f/typing_extensions-4.15.0.tar.gz"
     sha256 "0cea48d173cc12fa28ecabc3b837ea3cf6f38c6d1136f85cbaaf598984861466"
   end
