@@ -23,6 +23,7 @@ class LlmindCli < Formula
   depends_on "openssl@3" # cryptography links against OpenSSL
   depends_on "poppler" # pdf2image (pdftoppm/pdftocairo)
   depends_on "python@3.12"
+  depends_on "qpdf" # pikepdf (Python wrapper around QPDF)
 
   uses_from_macos "libxml2"  # lxml (transitive)
   uses_from_macos "libxslt"  # lxml (transitive)
