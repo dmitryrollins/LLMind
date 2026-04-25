@@ -92,8 +92,18 @@ jobs:
           SDIST_PATH: ${{ steps.sdist.outputs.path }}
         run: |
           set -euo pipefail
-          if ! gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            # If a prior run left the release in draft state (happens when the
+            # tag is deleted/recreated between runs), publish it — otherwise
+            # the public download URL returns 404 and audit fails.
+            is_draft=$(gh release view "$TAG" --repo "${{ github.repository }}" --json isDraft --jq .isDraft)
+            if [[ "$is_draft" == "true" ]]; then
+              echo "Found draft release for $TAG; publishing..."
+              gh release edit "$TAG" --repo "${{ github.repository }}" --draft=false
+            fi
+          else
             gh release create "$TAG" --repo "${{ github.repository }}" \
+              --target "$GITHUB_SHA" \
               --title "llmind-cli ${VERSION}" \
               --notes "Automated release built by .github/workflows/release-homebrew.yml."
           fi
