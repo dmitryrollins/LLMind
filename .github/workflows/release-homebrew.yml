@@ -139,8 +139,11 @@ jobs:
           /usr/bin/sed -i '' -E "s|^  sha256 \"[^\"]*\"|  sha256 \"${SHA}\"|" "$FORMULA_PATH"
           /usr/bin/sed -i '' -E "s|^  version \"[^\"]*\"|  version \"${VERSION}\"|" "$FORMULA_PATH"
 
-      - name: Regenerate Python resources
-        run: brew update-python-resources "${TAP_OWNER}/${TAP_NAME}/${FORMULA}"
+      # Resources are static (committed in packaging/homebrew/llmind-cli.rb).
+      # `brew update-python-resources` was tried but its --uploaded-prior-to=24h
+      # reproducibility cutoff makes runs non-deterministic — pip dry-run fails
+      # whenever a transitive dep can't be resolved within the cutoff. Regenerate
+      # locally with packaging/homebrew/regenerate_resources.sh when deps change.
 
       - name: Audit
         # Non-strict audit: strict mode flags `version` as redundant with the
