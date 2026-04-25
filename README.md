@@ -40,6 +40,36 @@ Install the local provider with: `pip install -e .[whisper-local]`.
 
 ---
 
+## Install the CLI
+
+### Homebrew (macOS, Linux)
+
+```bash
+brew tap dmitryrollins/llmind
+brew install llmind-cli
+```
+
+The default install bundles the cloud providers (`anthropic`, `openai`,
+`google-genai`). To add the optional local Whisper backend afterwards:
+
+```bash
+"$(brew --prefix llmind-cli)/libexec/bin/pip" install faster-whisper
+```
+
+### From source
+
+```bash
+cd llmind-cli
+pip install -e .
+# Optional extras:
+pip install -e .[anthropic,openai,gemini,whisper-local]
+```
+
+The Homebrew formula source lives in [`packaging/homebrew/`](packaging/homebrew/);
+see that directory's README for tap maintenance and release steps.
+
+---
+
 ## Key features
 
 - **Immutable layer history** — every enrichment is a version. Nothing is overwritten. Previous layers cannot be modified without the creation key.

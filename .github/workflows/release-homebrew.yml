@@ -1,0 +1,133 @@
+name: Bump Homebrew formula
+
+# Auto-bumps the llmind-cli formula in dmitryrollins/homebrew-llmind whenever
+# a `cli-v*` tag is pushed to this repo. Opens a PR in the tap with the new
+# url, sha256, version, and regenerated Python resources.
+#
+# Required secret (configure in this repo's Settings → Secrets → Actions):
+#   HOMEBREW_TAP_TOKEN — fine-grained PAT with Contents: write + Pull requests:
+#                        write on dmitryrollins/homebrew-llmind.
+
+on:
+  push:
+    tags: ['cli-v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: CLI release tag (e.g. cli-v0.2.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  bump:
+    runs-on: macos-latest
+    env:
+      TAP_OWNER: dmitryrollins
+      TAP_NAME: llmind
+      TAP_REPO: dmitryrollins/homebrew-llmind
+      FORMULA: llmind-cli
+
+    steps:
+      - name: Resolve tag, version, source URL, sha256
+        id: meta
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            tag="${{ inputs.tag }}"
+          else
+            tag="${GITHUB_REF#refs/tags/}"
+          fi
+          if [[ "$tag" != cli-v* ]]; then
+            echo "::error::Tag '$tag' must start with 'cli-v'"
+            exit 1
+          fi
+          version="${tag#cli-v}"
+          url="https://github.com/${{ github.repository }}/archive/refs/tags/${tag}.tar.gz"
+          sha=$(curl -fsSL "$url" | shasum -a 256 | awk '{print $1}')
+          {
+            echo "tag=$tag"
+            echo "version=$version"
+            echo "url=$url"
+            echo "sha=$sha"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Checkout tap
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.TAP_REPO }}
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
+
+      - name: Move tap into Homebrew prefix
+        id: tap
+        run: |
+          set -euo pipefail
+          target="$(brew --repository)/Library/Taps/${TAP_OWNER}/homebrew-${TAP_NAME}"
+          mkdir -p "$(dirname "$target")"
+          mv "$GITHUB_WORKSPACE/tap" "$target"
+          echo "path=$target" >> "$GITHUB_OUTPUT"
+
+      - name: Update url, sha256, version
+        env:
+          URL: ${{ steps.meta.outputs.url }}
+          SHA: ${{ steps.meta.outputs.sha }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          FORMULA_PATH: ${{ steps.tap.outputs.path }}/Formula/llmind-cli.rb
+        run: |
+          set -euo pipefail
+          # Match exactly 2 leading spaces so we don't touch indented
+          # resource blocks (those use 4-space indent).
+          /usr/bin/sed -i '' -E "s|^  url \"[^\"]*\"|  url \"${URL}\"|" "$FORMULA_PATH"
+          /usr/bin/sed -i '' -E "s|^  sha256 \"[^\"]*\"|  sha256 \"${SHA}\"|" "$FORMULA_PATH"
+          /usr/bin/sed -i '' -E "s|^  version \"[^\"]*\"|  version \"${VERSION}\"|" "$FORMULA_PATH"
+
+      - name: Regenerate Python resources
+        run: brew update-python-resources "${TAP_OWNER}/${TAP_NAME}/${FORMULA}"
+
+      - name: Audit
+        run: brew audit --strict --online "${TAP_OWNER}/${TAP_NAME}/${FORMULA}"
+
+      - name: Smoke install + test
+        run: |
+          brew install --build-from-source "${TAP_OWNER}/${TAP_NAME}/${FORMULA}"
+          brew test "${TAP_OWNER}/${TAP_NAME}/${FORMULA}"
+
+      - name: Open PR in tap repo
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          URL: ${{ steps.meta.outputs.url }}
+          SHA: ${{ steps.meta.outputs.sha }}
+        working-directory: ${{ steps.tap.outputs.path }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "Formula already up to date for ${TAG}; nothing to PR."
+            exit 0
+          fi
+          branch="bump/${TAG}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add Formula/llmind-cli.rb
+          git commit -m "${FORMULA} ${VERSION}"
+          git push -u origin "$branch"
+          gh pr create \
+            --repo "${TAP_REPO}" \
+            --base main \
+            --head "$branch" \
+            --title "${FORMULA} ${VERSION}" \
+            --body "$(cat <<EOF
+          Auto-bump for tag \`${TAG}\`.
+
+          - URL: ${URL}
+          - SHA256: \`${SHA}\`
+
+          Python resources regenerated via \`brew update-python-resources\`.
+          Audit, install, and \`brew test\` passed in CI.
+          EOF
+          )"
