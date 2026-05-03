@@ -234,29 +234,18 @@ function patchXmpEmbedding(xmpString, vector, model) {
   return patched.slice(0, closeAngle) + embedAttrs + patched.slice(closeAngle);
 }
 
-// Simple PDF XMP injection (appends XMP as cross-reference update)
+// Simple PDF XMP injection — appends XMP as a comment block after %%EOF.
+// We search for %%EOF in raw bytes to avoid corrupting binary PDF streams.
 function injectPDF(original, xmpXml) {
-  const dec = new TextDecoder();
-  const text = dec.decode(original);
   const xmpBytes = new TextEncoder().encode(xmpXml);
-
-  // Find the last xref offset
-  const startxrefMatch = text.lastIndexOf("startxref");
-  if (startxrefMatch === -1) return original; // can't inject, return as-is
-
-  // Simple approach: embed XMP as a comment block at end before %%EOF
-  // This is a simplified approach for the POC
-  const eofIdx = text.lastIndexOf("%%EOF");
-  if (eofIdx === -1) return original;
-
-  const before = original.slice(0, eofIdx);
   const b64Xmp = bytesToBase64(xmpBytes);
   const xmpComment = new TextEncoder().encode(
-    `\n% LLMind XMP Metadata (embedded)\n% ${b64Xmp.match(/.{1,76}/g).join("\n% ")}\n%%EOF\n`
+    `\n% LLMind XMP Metadata (embedded)\n% ${b64Xmp.match(/.{1,76}/g).join("\n% ")}\n`
   );
-  const result = new Uint8Array(before.length + xmpComment.length);
-  result.set(before, 0);
-  result.set(xmpComment, before.length);
+  // Append after the original PDF (preserves all binary content intact)
+  const result = new Uint8Array(original.length + xmpComment.length);
+  result.set(original, 0);
+  result.set(xmpComment, original.length);
   return result;
 }
 
@@ -423,7 +412,7 @@ export default function LLMindConverter() {
 
       // 5. Parse response
       setStatus("Parsing extraction...");
-      const rawText = data.content.map(c => c.text || "").join("");
+      const rawText = String(data.content.map(c => (typeof c.text === "string" ? c.text : JSON.stringify(c.text) || "")).join(""));
       const cleaned = rawText.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
       const extracted = JSON.parse(cleaned);
 
