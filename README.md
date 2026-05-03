@@ -42,31 +42,56 @@ Install the local provider with: `pip install -e .[whisper-local]`.
 
 ## Install the CLI
 
-### Homebrew (macOS, Linux)
+The CLI ships as a Python package. Install it with `pipx` (recommended) or
+`uv` — both put it on your `PATH` in an isolated environment without touching
+your system Python.
+
+> **Requires** Python 3.11+. PDF rendering also needs `poppler-utils` on your
+> system (`brew install poppler` on macOS, `apt install poppler-utils` on
+> Debian/Ubuntu). Image and audio support work out of the box.
+
+### Pick the providers you want
+
+The core install handles file I/O, signing, and metadata. Cloud and local
+backends are opt-in extras so you only pull in what you'll use:
+
+| Extra            | What you get                                  |
+| ---------------- | --------------------------------------------- |
+| `anthropic`      | Claude vision (recommended default)           |
+| `openai`         | GPT-4o vision + Whisper transcription         |
+| `gemini`         | Gemini 2.0 vision + audio                     |
+| `whisper-local`  | Offline Whisper via `faster-whisper`          |
+| `embeddings`     | VoyageAI embeddings for semantic search       |
+| `all`            | Everything above                              |
+
+### With pipx
 
 ```bash
-brew tap dmitryrollins/llmind
-brew install llmind-cli
+# install pipx if you don't have it: brew install pipx && pipx ensurepath
+pipx install 'llmind-cli[anthropic]'
 ```
 
-The default install bundles the cloud providers (`anthropic`, `openai`,
-`google-genai`). To add the optional local Whisper backend afterwards:
+### With uv
 
 ```bash
-"$(brew --prefix llmind-cli)/libexec/bin/pip" install faster-whisper
+# install uv if you don't have it: brew install uv
+uv tool install 'llmind-cli[anthropic]'
 ```
 
-### From source
+Combine extras with commas — e.g. `'llmind-cli[anthropic,whisper-local]'` — or
+use `[all]` for everything.
+
+### From source (development)
 
 ```bash
 cd llmind-cli
-pip install -e .
-# Optional extras:
-pip install -e .[anthropic,openai,gemini,whisper-local]
+pip install -e '.[all,dev]'
 ```
 
-The Homebrew formula source lives in [`packaging/homebrew/`](packaging/homebrew/);
-see that directory's README for tap maintenance and release steps.
+> A Homebrew formula exists under [`packaging/homebrew/`](packaging/homebrew/)
+> but is no longer the recommended install path: Homebrew forces source builds
+> for Python wheels and pulls in a 3 GB toolchain (LLVM, Rust, Poppler, GnuTLS,
+> …). `pipx`/`uv` install the same package from prebuilt wheels in seconds.
 
 ---
 

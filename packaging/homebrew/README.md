@@ -1,5 +1,17 @@
 # Homebrew Tap for `llmind-cli`
 
+> **Status: deprecated.** The recommended install is now `pipx install
+> 'llmind-cli[anthropic]'` (or `uv tool install …`). Homebrew forces source
+> builds for every Python wheel, which drags in a 3 GB toolchain (LLVM, Rust,
+> Poppler, GnuTLS, NSS, GnuPG, …) and routinely fails on packages like
+> `pikepdf` whose PEP 517 build needs `pybind11` + `cmake`. The pipx/uv path
+> uses prebuilt wheels and finishes in seconds.
+>
+> The formula and tap workflow below are kept for reference and for users who
+> insist on `brew`. Note: the resource block in `llmind-cli.rb` is now stale
+> relative to the slimmer `pyproject.toml` and would need
+> `regenerate_resources.sh` to be re-run before the formula will install.
+
 This directory holds the source-of-truth Homebrew formula for `llmind-cli`.
 It is intended to be published from a separate **tap repo** so users can run:
 
