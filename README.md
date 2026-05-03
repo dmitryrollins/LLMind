@@ -88,11 +88,6 @@ cd llmind-cli
 pip install -e '.[all,dev]'
 ```
 
-> A Homebrew formula exists under [`packaging/homebrew/`](packaging/homebrew/)
-> but is no longer the recommended install path: Homebrew forces source builds
-> for Python wheels and pulls in a 3 GB toolchain (LLVM, Rust, Poppler, GnuTLS,
-> …). `pipx`/`uv` install the same package from prebuilt wheels in seconds.
-
 ---
 
 ## Key features

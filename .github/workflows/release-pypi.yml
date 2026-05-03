@@ -1,0 +1,124 @@
+name: release-pypi
+
+# Publishes llmind-cli to PyPI on every cli-v* tag push.
+#
+# One-time setup before this workflow can publish:
+#   1. Go to https://pypi.org/manage/project/llmind-cli/settings/publishing/
+#   2. Add a "trusted publisher" with:
+#        Owner:           dmitryrollins
+#        Repository:      LLMind
+#        Workflow name:   release-pypi.yml
+#        Environment:     pypi-publish  (must match the `environment` block below)
+#   3. In this repo, create the environment under Settings → Environments
+#      with the name `pypi-publish`. Optional: add required reviewers so a
+#      human has to approve each release.
+#
+# After that, releases are: bump version → git tag cli-v0.2.0 && git push --tags.
+
+on:
+  push:
+    tags:
+      - "cli-v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g. cli-v0.1.0)"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build sdist + wheel
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Verify tag matches pyproject.toml version
+        working-directory: llmind-cli
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME:-${{ inputs.tag }}}"
+          tag_version="${tag#cli-v}"
+          pkg_version=$(python -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          echo "tag_version=$tag_version pkg_version=$pkg_version"
+          if [ "$tag_version" != "$pkg_version" ]; then
+            echo "::error::Tag $tag declares version $tag_version but pyproject.toml has $pkg_version"
+            exit 1
+          fi
+
+      - name: Install build tooling
+        run: python -m pip install --upgrade pip build twine
+
+      - name: Build distributions
+        working-directory: llmind-cli
+        run: python -m build
+
+      - name: Validate distributions
+        working-directory: llmind-cli
+        run: twine check dist/*
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: llmind-cli-dist
+          path: llmind-cli/dist/
+          retention-days: 7
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi-publish
+      url: https://pypi.org/project/llmind-cli/
+    permissions:
+      id-token: write  # Required for PyPI Trusted Publishers (OIDC)
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: llmind-cli-dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+
+  smoke-test:
+    name: Smoke-test pipx install
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install poppler-utils (system prereq for pdf2image)
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+
+      - name: Wait for PyPI CDN to propagate
+        run: sleep 60
+
+      - name: Install via pipx
+        run: |
+          python -m pip install --upgrade pipx
+          tag="${GITHUB_REF_NAME:-${{ inputs.tag }}}"
+          version="${tag#cli-v}"
+          pipx install "llmind-cli[anthropic]==$version"
+
+      - name: Verify CLI starts
+        run: |
+          ~/.local/bin/llmind --version
+          ~/.local/bin/llmind --help
