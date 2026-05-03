@@ -6,11 +6,11 @@
 
 ## What it does
 
-LLMind takes a standard **JPEG, PNG, or PDF** file and enriches it with a structured metadata layer containing:
+LLMind takes a standard **JPEG, PNG, PDF, MP3, WAV, or M4A** file and enriches it with a structured metadata layer containing:
 
-- **Extracted text** — every word, badge, watermark, and label from the file
-- **Visual description** — a natural-language description of layout, logos, icons, and design elements
-- **Document structure** — regions, figures, and tables mapped as JSON
+- **Extracted text** — every word, badge, watermark, label (images/PDF) or spoken-word transcript (audio)
+- **Visual description** or **audio summary** — natural-language description
+- **Document structure** (image/PDF) or **timestamped segments** (audio) — mapped as JSON
 
 All of this is embedded as **XMP metadata** directly inside the file's binary — no external database, no sidecar file. The enriched file opens normally in any viewer or editor.
 
@@ -22,6 +22,71 @@ All of this is embedded as **XMP metadata** directly inside the file's binary �
 2. **Configure** your Anthropic API key (used in-browser only, never stored)
 3. **Convert** — the file is analyzed by Claude's vision model
 4. **Download** the enriched `.llmind` file and your creation key
+
+---
+
+## Audio support (CLI-only)
+
+Audio files are transcribed and enriched with:
+
+- Full transcript (`llmind:text`)
+- 1–2 sentence summary (`llmind:description`)
+- Timestamped segments (`llmind:segments`)
+- Duration in seconds (`llmind:duration_seconds`)
+- Media type marker (`llmind:media_type="audio"`)
+
+Supported providers: OpenAI Whisper, Gemini, local `faster-whisper`.
+Install the local provider with: `pip install -e .[whisper-local]`.
+
+---
+
+## Install the CLI
+
+The CLI ships as a Python package. Install it with `pipx` (recommended) or
+`uv` — both put it on your `PATH` in an isolated environment without touching
+your system Python.
+
+> **Requires** Python 3.11+. PDF rendering also needs `poppler-utils` on your
+> system (`brew install poppler` on macOS, `apt install poppler-utils` on
+> Debian/Ubuntu). Image and audio support work out of the box.
+
+### Pick the providers you want
+
+The core install handles file I/O, signing, and metadata. Cloud and local
+backends are opt-in extras so you only pull in what you'll use:
+
+| Extra            | What you get                                  |
+| ---------------- | --------------------------------------------- |
+| `anthropic`      | Claude vision (recommended default)           |
+| `openai`         | GPT-4o vision + Whisper transcription         |
+| `gemini`         | Gemini 2.0 vision + audio                     |
+| `whisper-local`  | Offline Whisper via `faster-whisper`          |
+| `embeddings`     | VoyageAI embeddings for semantic search       |
+| `all`            | Everything above                              |
+
+### With pipx
+
+```bash
+# install pipx if you don't have it: brew install pipx && pipx ensurepath
+pipx install 'llmind-cli[anthropic]'
+```
+
+### With uv
+
+```bash
+# install uv if you don't have it: brew install uv
+uv tool install 'llmind-cli[anthropic]'
+```
+
+Combine extras with commas — e.g. `'llmind-cli[anthropic,whisper-local]'` — or
+use `[all]` for everything.
+
+### From source (development)
+
+```bash
+cd llmind-cli
+pip install -e '.[all,dev]'
+```
 
 ---
 

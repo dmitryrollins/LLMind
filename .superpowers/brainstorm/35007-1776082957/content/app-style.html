@@ -1,0 +1,133 @@
+<h2>What style should the app take?</h2>
+<p class="subtitle">Three approaches to a Raycast-inspired image search for LLMind</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#1a1a1a;padding:16px;border-radius:8px;font-family:-apple-system,sans-serif;">
+      <div style="background:#2a2a2a;border-radius:10px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+        <div style="padding:14px 16px;border-bottom:1px solid #333;display:flex;align-items:center;gap:10px;">
+          <span style="color:#888;font-size:16px;">⌕</span>
+          <span style="color:#e0e0e0;font-size:15px;flex:1">wedding ring</span>
+          <span style="color:#555;font-size:11px;">ESC to close</span>
+        </div>
+        <div style="padding:8px 0;">
+          <div style="padding:8px 16px;display:flex;gap:12px;align-items:center;background:#3a3a3a;border-left:2px solid #00d4ff;">
+            <div style="width:40px;height:40px;background:#444;border-radius:6px;flex-shrink:0;background:linear-gradient(135deg,#555,#333)"></div>
+            <div>
+              <div style="color:#e0e0e0;font-size:13px">Screenshot 2026-03-24.llmind.png</div>
+              <div style="color:#888;font-size:11px">Bride and groom during wedding ceremony</div>
+            </div>
+            <div style="margin-left:auto;color:#00d4ff;font-size:12px;font-weight:600">0.385</div>
+          </div>
+          <div style="padding:8px 16px;display:flex;gap:12px;align-items:center;">
+            <div style="width:40px;height:40px;background:#444;border-radius:6px;flex-shrink:0;background:linear-gradient(135deg,#444,#2a2a2a)"></div>
+            <div>
+              <div style="color:#aaa;font-size:13px">Screenshot 2026-03-24 09.52.llmind.png</div>
+              <div style="color:#666;font-size:11px">Couple holding hands, rings and flowers</div>
+            </div>
+            <div style="margin-left:auto;color:#888;font-size:12px">0.347</div>
+          </div>
+          <div style="padding:8px 16px;display:flex;gap:12px;align-items:center;">
+            <div style="width:40px;height:40px;background:#383838;border-radius:6px;flex-shrink:0"></div>
+            <div>
+              <div style="color:#888;font-size:13px">Screenshot 2026-03-22.llmind.png</div>
+              <div style="color:#555;font-size:11px">Woman in white wedding dress</div>
+            </div>
+            <div style="margin-left:auto;color:#666;font-size:12px">0.295</div>
+          </div>
+        </div>
+        <div style="padding:10px 16px;border-top:1px solid #333;display:flex;gap:16px;">
+          <span style="color:#555;font-size:11px">↑↓ navigate</span>
+          <span style="color:#555;font-size:11px">↵ open in Finder</span>
+          <span style="color:#555;font-size:11px">⌘↵ reveal folder</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Raycast Popup</h3>
+      <p>Global hotkey (⌘Space or custom) summons a floating window. Type to search. Results with thumbnails + scores. Keyboard-only navigation. Disappears when done.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#1a1a1a;padding:16px;border-radius:8px;font-family:-apple-system,sans-serif;">
+      <div style="background:#1e1e1e;border-radius:10px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.4);display:flex;height:280px;">
+        <div style="width:200px;background:#181818;border-right:1px solid #2a2a2a;padding:12px 0;flex-shrink:0;">
+          <div style="padding:8px 14px;color:#888;font-size:10px;text-transform:uppercase;letter-spacing:.08em">Folders</div>
+          <div style="padding:8px 14px;background:#2a2a2a;border-left:2px solid #00d4ff;color:#e0e0e0;font-size:13px">📁 Screen Shoot</div>
+          <div style="padding:8px 14px;color:#888;font-size:13px">📁 Photos</div>
+          <div style="padding:8px 14px;color:#888;font-size:13px">📁 Desktop</div>
+          <div style="margin-top:auto;padding:12px 14px;border-top:1px solid #2a2a2a;margin-top:100px">
+            <div style="background:#2a2a2a;border-radius:6px;padding:7px 10px;display:flex;align-items:center;gap:6px;">
+              <span style="color:#888;font-size:13px">⌕</span>
+              <span style="color:#555;font-size:12px">Search…</span>
+            </div>
+          </div>
+        </div>
+        <div style="flex:1;padding:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-content:start;">
+          <div style="background:#2a2a2a;border-radius:8px;overflow:hidden;">
+            <div style="height:60px;background:linear-gradient(135deg,#3a3a3a,#2a2a2a)"></div>
+            <div style="padding:6px 8px"><div style="color:#aaa;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">wedding ce…</div><div style="color:#00d4ff;font-size:9px">0.385</div></div>
+          </div>
+          <div style="background:#2a2a2a;border-radius:8px;overflow:hidden;">
+            <div style="height:60px;background:linear-gradient(135deg,#333,#252525)"></div>
+            <div style="padding:6px 8px"><div style="color:#aaa;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">rings and f…</div><div style="color:#888;font-size:9px">0.347</div></div>
+          </div>
+          <div style="background:#2a2a2a;border-radius:8px;overflow:hidden;opacity:.6">
+            <div style="height:60px;background:#2a2a2a"></div>
+            <div style="padding:6px 8px"><div style="color:#666;font-size:10px">dress and…</div><div style="color:#555;font-size:9px">0.295</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Full Window App</h3>
+      <p>Persistent app window. Sidebar with watched folders. Grid view of thumbnail results. Menu bar icon to show/hide. More space for previews and metadata.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#1a1a1a;padding:16px;border-radius:8px;font-family:-apple-system,sans-serif;">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
+        <div style="background:#2a2a2a;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 2px 12px rgba(0,0,0,.5)">⬡</div>
+        <div style="background:#2a2a2a;border-radius:10px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.6);width:100%;">
+          <div style="padding:12px 14px;border-bottom:1px solid #333;display:flex;align-items:center;gap:8px;">
+            <span style="color:#888;font-size:14px">⌕</span>
+            <span style="color:#e0e0e0;font-size:14px;flex:1">wedding ring</span>
+          </div>
+          <div style="display:flex;gap:0;">
+            <div style="flex:1;border-right:1px solid #333;">
+              <div style="padding:8px 12px;background:#333;display:flex;gap:8px;align-items:center;border-left:2px solid #00d4ff;">
+                <div style="width:32px;height:32px;background:linear-gradient(135deg,#555,#333);border-radius:5px;flex-shrink:0"></div>
+                <div style="color:#e0e0e0;font-size:12px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">Screenshot 2026-03-24…</div>
+              </div>
+              <div style="padding:8px 12px;display:flex;gap:8px;align-items:center;">
+                <div style="width:32px;height:32px;background:#363636;border-radius:5px;flex-shrink:0"></div>
+                <div style="color:#777;font-size:12px">Screenshot 2026-03-24…</div>
+              </div>
+              <div style="padding:8px 12px;display:flex;gap:8px;align-items:center;">
+                <div style="width:32px;height:32px;background:#303030;border-radius:5px;flex-shrink:0"></div>
+                <div style="color:#666;font-size:12px">Screenshot 2026-03-22…</div>
+              </div>
+            </div>
+            <div style="width:140px;padding:12px;background:#252525;">
+              <div style="width:100%;height:80px;background:linear-gradient(135deg,#444,#2a2a2a);border-radius:6px;margin-bottom:8px"></div>
+              <div style="color:#e0e0e0;font-size:11px;margin-bottom:4px">Bride and groom during wedding ceremony with rings</div>
+              <div style="color:#00d4ff;font-size:10px">Score: 0.385</div>
+              <div style="margin-top:8px;display:flex;gap:4px;">
+                <div style="background:#333;border-radius:4px;padding:3px 6px;color:#888;font-size:9px">Open</div>
+                <div style="background:#333;border-radius:4px;padding:3px 6px;color:#888;font-size:9px">Reveal</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Menu Bar + Popup with Preview</h3>
+      <p>Menu bar icon always present. Click (or hotkey) opens a compact popup with list + live preview panel on the right. Quick actions: open, reveal, copy path.</p>
+    </div>
+  </div>
+
+</div>

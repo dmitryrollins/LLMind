@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>LLMind Mac App — Design</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f0f0f; color: #e0e0e0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; padding: 32px; }
+  h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; color: #fff; }
+  .sub { color: #666; font-size: 14px; margin-bottom: 36px; }
+  .section { margin-bottom: 48px; }
+  .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: #555; margin-bottom: 16px; }
+  h2 { font-size: 16px; font-weight: 600; color: #ccc; margin-bottom: 16px; }
+
+  /* ── Desktop mockup ── */
+  .desktop { background: linear-gradient(160deg, #1a2a3a 0%, #0a1520 100%); border-radius: 12px; padding: 48px 32px; display: flex; justify-content: center; align-items: flex-start; position: relative; min-height: 380px; }
+  .menu-bar { position: absolute; top: 0; left: 0; right: 0; height: 28px; background: rgba(0,0,0,.5); border-radius: 12px 12px 0 0; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; }
+  .menu-bar-left { display: flex; gap: 16px; font-size: 12px; color: #888; }
+  .menu-bar-right { display: flex; gap: 10px; align-items: center; font-size: 12px; color: #888; }
+  .menu-icon { width: 18px; height: 18px; background: #333; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; }
+  .llmind-icon { background: #00d4ff22; color: #00d4ff; border: 1px solid #00d4ff44; }
+
+  /* ── Popup ── */
+  .popup { width: 580px; background: rgba(30,30,30,.97); border-radius: 12px; overflow: hidden; box-shadow: 0 32px 80px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.08); backdrop-filter: blur(40px); margin-top: 30px; }
+
+  .search-bar { padding: 0 16px; height: 52px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #2a2a2a; }
+  .search-icon { color: #555; font-size: 17px; }
+  .search-input { flex: 1; font-size: 17px; color: #e8e8e8; background: transparent; border: none; outline: none; font-family: inherit; }
+  .search-input::placeholder { color: #3a3a3a; }
+  .search-meta { display: flex; align-items: center; gap: 8px; }
+  .folder-btn { color: #555; font-size: 13px; cursor: pointer; padding: 3px 6px; border-radius: 4px; }
+  .folder-btn:hover { background: #2a2a2a; }
+  .mode-badge { background: #1e3a1e; color: #4ade80; font-size: 10px; border-radius: 4px; padding: 2px 6px; letter-spacing: .04em; }
+  .esc-hint { color: #3a3a3a; font-size: 11px; }
+
+  .results { padding: 6px 0; max-height: 360px; overflow-y: auto; }
+
+  .result { padding: 9px 14px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: background .08s; }
+  .result:hover { background: #252525; }
+  .result.active { background: #252525; }
+  .result.selected { background: #1a2a3a; }
+
+  .thumb { width: 44px; height: 44px; border-radius: 7px; flex-shrink: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #2a2a2a; }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .thumb-placeholder { width: 44px; height: 44px; border-radius: 7px; flex-shrink: 0; }
+
+  .result-body { flex: 1; min-width: 0; }
+  .result-name { font-size: 13px; color: #d0d0d0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
+  .result-desc { font-size: 11px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .result.selected .result-name { color: #fff; }
+  .result.selected .result-desc { color: #888; }
+
+  .result-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+  .score { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; color: #00d4ff; }
+  .score.mid { color: #888; }
+  .score.low { color: #444; }
+  .actions { display: flex; gap: 4px; opacity: 0; }
+  .result.selected .actions { opacity: 1; }
+  .action-key { background: #2a2a2a; border: 1px solid #3a3a3a; border-radius: 4px; padding: 1px 5px; font-size: 10px; color: #888; white-space: nowrap; }
+
+  .divider { height: 1px; background: #1e1e1e; margin: 4px 14px; }
+
+  .footer { padding: 8px 14px; border-top: 1px solid #1e1e1e; display: flex; gap: 16px; align-items: center; }
+  .kbd { color: #444; font-size: 11px; display: flex; align-items: center; gap: 4px; }
+  .key { background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 3px; padding: 1px 5px; font-size: 10px; color: #555; }
+  .footer-right { margin-left: auto; color: #333; font-size: 11px; }
+
+  /* ── Architecture ── */
+  .arch { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 8px; }
+  .arch-box { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px; padding: 16px; }
+  .arch-box h3 { font-size: 13px; font-weight: 600; color: #ccc; margin-bottom: 8px; }
+  .arch-box ul { list-style: none; padding: 0; }
+  .arch-box ul li { font-size: 12px; color: #666; padding: 3px 0; border-bottom: 1px solid #1e1e1e; }
+  .arch-box ul li:last-child { border: none; }
+  .arch-box ul li span { color: #888; }
+  .arch-arrow { display: flex; align-items: center; justify-content: center; color: #333; font-size: 20px; }
+  .tag { display: inline-block; font-size: 10px; border-radius: 3px; padding: 1px 5px; margin-bottom: 6px; }
+  .tag-swift { background: #2a1a3a; color: #bf80ff; border: 1px solid #3a2a4a; }
+  .tag-python { background: #1a2a1a; color: #4ade80; border: 1px solid #2a3a2a; }
+  .tag-shared { background: #1a1a2a; color: #60a5fa; border: 1px solid #2a2a3a; }
+
+  /* ── Hotkey flow ── */
+  .flow { display: flex; align-items: center; gap: 0; flex-wrap: wrap; margin-top: 8px; }
+  .flow-step { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #888; text-align: center; min-width: 100px; }
+  .flow-step .num { font-size: 10px; color: #444; margin-bottom: 3px; }
+  .flow-step .label { color: #ccc; font-weight: 500; }
+  .flow-arrow { color: #333; padding: 0 8px; font-size: 16px; }
+</style>
+</head>
+<body>
+
+<h1>LLMind for Mac — Design</h1>
+<p class="sub">Raycast-style semantic image search · SwiftUI + FastAPI companion</p>
+
+<!-- ── POPUP MOCKUP ── -->
+<div class="section">
+  <div class="section-label">UI Mockup</div>
+  <div class="desktop">
+    <div class="menu-bar">
+      <div class="menu-bar-left">
+        <span style="color:#ddd;font-weight:600">⬡ LLMind</span>
+        <span>File</span><span>Edit</span><span>View</span>
+      </div>
+      <div class="menu-bar-right">
+        <span>Mon 13 Apr  15:34</span>
+        <div class="menu-icon llmind-icon">⬡</div>
+        <div class="menu-icon">Wi</div>
+        <div class="menu-icon">🔋</div>
+      </div>
+    </div>
+
+    <div class="popup">
+      <div class="search-bar">
+        <span class="search-icon">⌕</span>
+        <span class="search-input" style="color:#e8e8e8">wedding ring</span>
+        <div class="search-meta">
+          <span class="folder-btn">~/</span>
+          <span class="mode-badge">hybrid</span>
+          <span class="esc-hint">ESC</span>
+        </div>
+      </div>
+
+      <div class="results">
+        <div class="result selected">
+          <div class="thumb-placeholder" style="background:linear-gradient(135deg,#3a4a5a,#1a2a3a);border-radius:7px;"></div>
+          <div class="result-body">
+            <div class="result-name">Screenshot 2026-03-24 at 09.54.37.llmind.png</div>
+            <div class="result-desc" style="color:#888">Bride and groom during their wedding ceremony with rings</div>
+          </div>
+          <div class="result-right">
+            <span class="score">0.385</span>
+            <div class="actions">
+              <span class="action-key">↵ Open</span>
+              <span class="action-key">⌘↵ Reveal</span>
+              <span class="action-key">⌘C Copy</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="result active">
+          <div class="thumb-placeholder" style="background:linear-gradient(135deg,#3a3a2a,#1a1a12);border-radius:7px;"></div>
+          <div class="result-body">
+            <div class="result-name">Screenshot 2026-03-24 at 09.52.40.llmind.png</div>
+            <div class="result-desc">A couple holding hands on their wedding day with rings and flowers</div>
+          </div>
+          <div class="result-right">
+            <span class="score mid">0.347</span>
+          </div>
+        </div>
+
+        <div class="result">
+          <div class="thumb-placeholder" style="background:linear-gradient(135deg,#2a3a2a,#121a12);border-radius:7px;"></div>
+          <div class="result-body">
+            <div class="result-name">Screenshot 2026-03-22 at 10.48.17.llmind.png</div>
+            <div class="result-desc">Woman wearing a white wedding dress and veil</div>
+          </div>
+          <div class="result-right">
+            <span class="score low">0.295</span>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="result">
+          <div class="thumb-placeholder" style="background:linear-gradient(135deg,#2a2a3a,#12121a);border-radius:7px;"></div>
+          <div class="result-body">
+            <div class="result-name">Screenshot 2026-03-21 at 22.18.24.llmind.png</div>
+            <div class="result-desc">Mobile phone screen displaying a travel booking</div>
+          </div>
+          <div class="result-right">
+            <span class="score low">0.294</span>
+          </div>
+        </div>
+
+        <div class="result">
+          <div class="thumb-placeholder" style="background:linear-gradient(135deg,#3a2a2a,#1a1212);border-radius:7px;"></div>
+          <div class="result-body">
+            <div class="result-name">Screenshot 2026-03-23 at 22.19.54.llmind.png</div>
+            <div class="result-desc">Bride and groom walking down the aisle</div>
+          </div>
+          <div class="result-right">
+            <span class="score low">0.286</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <span class="kbd"><span class="key">↑↓</span> navigate</span>
+        <span class="kbd"><span class="key">↵</span> open</span>
+        <span class="kbd"><span class="key">⌘↵</span> reveal in Finder</span>
+        <span class="kbd"><span class="key">⌘C</span> copy path</span>
+        <span class="footer-right">5 results · ~/  · hybrid</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── ARCHITECTURE ── -->
+<div class="section">
+  <div class="section-label">Architecture</div>
+  <div class="arch">
+    <div class="arch-box">
+      <span class="tag tag-swift">Swift / SwiftUI</span>
+      <h3>Mac App</h3>
+      <ul>
+        <li><span>NSPanel</span> — floating popup window</li>
+        <li><span>NSStatusItem</span> — menu bar icon</li>
+        <li><span>CGEventTap</span> — global hotkey</li>
+        <li><span>FSEventStream</span> — watch ~/</li>
+        <li><span>NSTask</span> — manage server process</li>
+        <li><span>URLSession</span> — REST calls</li>
+      </ul>
+    </div>
+    <div class="arch-box">
+      <span class="tag tag-python">Python / FastAPI</span>
+      <h3>Companion Server</h3>
+      <ul>
+        <li><span>GET</span> /api/search</li>
+        <li><span>GET</span> /api/thumbnail</li>
+        <li><span>POST</span> /api/reveal</li>
+        <li><span>GET</span> /api/scan</li>
+        <li>Port 58421 (fixed)</li>
+        <li>Auto-started by app</li>
+      </ul>
+    </div>
+    <div class="arch-box">
+      <span class="tag tag-shared">Shared / On-disk</span>
+      <h3>llmind-cli</h3>
+      <ul>
+        <li>XMP embeddings in files</li>
+        <li>Hybrid search logic</li>
+        <li>keyword_score()</li>
+        <li>cosine_similarity()</li>
+        <li>Ollama (optional)</li>
+        <li>.llmind.* file format</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ── USER FLOW ── -->
+<div class="section">
+  <div class="section-label">User flow</div>
+  <div class="flow">
+    <div class="flow-step"><div class="num">1</div><div class="label">App launches</div><div style="font-size:10px;color:#555;margin-top:3px">Starts server<br>Scans ~/</div></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><div class="num">2</div><div class="label">⌘⇧Space</div><div style="font-size:10px;color:#555;margin-top:3px">Popup appears<br>Input focused</div></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><div class="num">3</div><div class="label">Type query</div><div style="font-size:10px;color:#555;margin-top:3px">300ms debounce<br>REST search</div></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><div class="num">4</div><div class="label">Results</div><div style="font-size:10px;color:#555;margin-top:3px">Thumbnails<br>↑↓ navigate</div></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><div class="num">5</div><div class="label">↵ / ⌘↵</div><div style="font-size:10px;color:#555;margin-top:3px">Open file or<br>reveal folder</div></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><div class="num">6</div><div class="label">ESC / blur</div><div style="font-size:10px;color:#555;margin-top:3px">Popup hides<br>Server stays up</div></div>
+  </div>
+</div>
+
+</body>
+</html>

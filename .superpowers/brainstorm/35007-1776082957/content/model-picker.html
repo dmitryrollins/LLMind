@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Model Picker</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f0f0f; color: #e0e0e0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 14px; padding: 32px; }
+  h2 { font-size: 18px; font-weight: 700; margin-bottom: 6px; color: #fff; }
+  .sub { color: #555; font-size: 13px; margin-bottom: 36px; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+  .label { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: #444; margin-bottom: 12px; }
+
+  .popup { background: rgba(30,30,30,.97); border-radius: 12px; overflow: visible; box-shadow: 0 20px 60px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.07); }
+
+  .search-bar { padding: 0 14px; height: 52px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #2a2a2a; }
+  .search-icon { color: #555; font-size: 16px; }
+  .search-text { flex: 1; font-size: 16px; color: #e8e8e8; }
+  .badge { border-radius: 5px; padding: 3px 7px; font-size: 10px; font-weight: 600; letter-spacing: .04em; cursor: pointer; }
+  .badge-mode { background: #1e3a1e; color: #4ade80; border: 1px solid #2a4a2a; }
+  .badge-model { background: #1a1a2e; color: #818cf8; border: 1px solid #2a2a4a; }
+  .badge-model:hover, .badge-model.active { background: #252540; border-color: #4040aa; }
+  .esc { color: #333; font-size: 11px; }
+
+  .result { padding: 9px 14px; display: flex; align-items: center; gap: 12px; }
+  .result.sel { background: #252525; }
+  .thumb { width: 42px; height: 42px; border-radius: 7px; flex-shrink: 0; }
+  .result-body { flex: 1; min-width: 0; }
+  .rname { font-size: 13px; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rdesc { font-size: 11px; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rscore { font-size: 12px; font-weight: 600; color: #818cf8; }
+
+  .footer { padding: 7px 14px; border-top: 1px solid #1e1e1e; display: flex; gap: 14px; }
+  .kbd { color: #333; font-size: 11px; }
+  .key { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 3px; padding: 1px 4px; font-size: 10px; color: #444; }
+
+  /* Picker dropdown */
+  .picker { position: relative; }
+  .picker-dropdown { position: absolute; top: calc(100% + 6px); right: 0; width: 260px; background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 10px; box-shadow: 0 16px 48px rgba(0,0,0,.7); overflow: hidden; z-index: 10; }
+  .picker-section { padding: 8px 0; border-bottom: 1px solid #1a1a1a; }
+  .picker-section:last-child { border: none; }
+  .picker-heading { padding: 4px 12px 6px; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #444; }
+  .picker-item { padding: 8px 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+  .picker-item:hover { background: #252525; }
+  .picker-item.active { background: #1a1a2e; }
+  .picker-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot-ollama { background: #4ade80; }
+  .dot-openai { background: #60a5fa; }
+  .dot-voyage { background: #f472b6; }
+  .picker-name { font-size: 13px; color: #ccc; flex: 1; }
+  .picker-model { font-size: 11px; color: #555; }
+  .picker-check { color: #818cf8; font-size: 13px; }
+
+  .note { font-size: 11px; color: #333; padding: 8px 12px; }
+</style>
+</head>
+<body>
+
+<h2>Search bar — model selection</h2>
+<p class="sub">Provider + model badge in the search bar. Click to open a quick picker.</p>
+
+<div class="split">
+
+  <!-- State 1: Normal -->
+  <div>
+    <div class="label">Normal state</div>
+    <div class="popup">
+      <div class="search-bar">
+        <span class="search-icon">⌕</span>
+        <span class="search-text">wedding ring</span>
+        <span class="badge badge-mode">hybrid</span>
+        <span class="badge badge-model">ollama / nomic-embed-text</span>
+        <span class="esc">ESC</span>
+      </div>
+      <div>
+        <div class="result sel">
+          <div class="thumb" style="background:linear-gradient(135deg,#3a4a5a,#1a2a3a)"></div>
+          <div class="result-body">
+            <div class="rname">Screenshot 2026-03-24 at 09.54.llmind.png</div>
+            <div class="rdesc">Bride and groom during wedding ceremony with rings</div>
+          </div>
+          <span class="rscore">0.385</span>
+        </div>
+        <div class="result">
+          <div class="thumb" style="background:linear-gradient(135deg,#3a3a2a,#1a1a12)"></div>
+          <div class="result-body">
+            <div class="rname">Screenshot 2026-03-24 at 09.52.llmind.png</div>
+            <div class="rdesc">Couple holding hands, rings and flowers</div>
+          </div>
+          <span class="rscore" style="color:#555">0.347</span>
+        </div>
+      </div>
+      <div class="footer">
+        <span class="kbd"><span class="key">↑↓</span> navigate</span>
+        <span class="kbd"><span class="key">↵</span> open</span>
+        <span class="kbd"><span class="key">⌘↵</span> reveal</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- State 2: Picker open -->
+  <div>
+    <div class="label">Picker open (click model badge)</div>
+    <div class="popup" style="position:relative">
+      <div class="search-bar">
+        <span class="search-icon">⌕</span>
+        <span class="search-text">wedding ring</span>
+        <span class="badge badge-mode">hybrid</span>
+        <div class="picker">
+          <span class="badge badge-model active">ollama / nomic-embed-text</span>
+          <div class="picker-dropdown">
+            <div class="picker-section">
+              <div class="picker-heading">Ollama (local)</div>
+              <div class="picker-item active">
+                <div class="picker-dot dot-ollama"></div>
+                <span class="picker-name">nomic-embed-text</span>
+                <span class="picker-check">✓</span>
+              </div>
+            </div>
+            <div class="picker-section">
+              <div class="picker-heading">OpenAI</div>
+              <div class="picker-item">
+                <div class="picker-dot dot-openai"></div>
+                <span class="picker-name">text-embedding-3-small</span>
+                <span class="picker-model">API key required</span>
+              </div>
+              <div class="picker-item">
+                <div class="picker-dot dot-openai"></div>
+                <span class="picker-name">text-embedding-3-large</span>
+                <span class="picker-model">API key required</span>
+              </div>
+            </div>
+            <div class="picker-section">
+              <div class="picker-heading">Voyage AI</div>
+              <div class="picker-item">
+                <div class="picker-dot dot-voyage"></div>
+                <span class="picker-name">voyage-3.5</span>
+                <span class="picker-model">API key required</span>
+              </div>
+            </div>
+            <div class="note">⌘, to manage API keys</div>
+          </div>
+        </div>
+        <span class="esc">ESC</span>
+      </div>
+      <div>
+        <div class="result sel" style="opacity:.4">
+          <div class="thumb" style="background:linear-gradient(135deg,#3a4a5a,#1a2a3a)"></div>
+          <div class="result-body">
+            <div class="rname">Screenshot 2026-03-24 at 09.54.llmind.png</div>
+            <div class="rdesc">Bride and groom during wedding ceremony with rings</div>
+          </div>
+          <span class="rscore">0.385</span>
+        </div>
+        <div class="result" style="opacity:.4">
+          <div class="thumb" style="background:linear-gradient(135deg,#3a3a2a,#1a1a12)"></div>
+          <div class="result-body">
+            <div class="rname">Screenshot 2026-03-24 at 09.52.llmind.png</div>
+            <div class="rdesc">Couple holding hands, rings and flowers</div>
+          </div>
+          <span class="rscore" style="color:#555">0.347</span>
+        </div>
+      </div>
+      <div class="footer" style="opacity:.4">
+        <span class="kbd"><span class="key">↑↓</span> navigate</span>
+        <span class="kbd"><span class="key">↵</span> open</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
