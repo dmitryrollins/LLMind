@@ -132,7 +132,7 @@ Expected: FAIL — `ModuleNotFoundError: No module named 'llmind.gemini_client'`
 - [ ] **Step 3: Commit test file**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind"
+cd "/path/to/LLMind"
 git add llmind-cli/tests/test_gemini_client.py
 git commit -m "test: add Gemini vision client tests (red)"
 ```
@@ -200,7 +200,7 @@ Expected: All 5 tests PASS
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind"
+cd "/path/to/LLMind"
 git add llmind-cli/llmind/gemini_client.py
 git commit -m "feat: add Gemini vision client"
 ```
@@ -251,7 +251,7 @@ Expected: All tests PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind"
+cd "/path/to/LLMind"
 git add llmind-cli/llmind/vision.py
 git commit -m "feat: wire Gemini into vision dispatcher"
 ```
@@ -355,7 +355,7 @@ Expected: FAIL — no `gemini` provider branch in `embed_text()`
 - [ ] **Step 3: Commit test file**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind"
+cd "/path/to/LLMind"
 git add llmind-cli/tests/test_gemini_embedder.py
 git commit -m "test: add Gemini embedding tests (red)"
 ```
@@ -445,7 +445,7 @@ Expected: All tests PASS
 - [ ] **Step 6: Commit**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind"
+cd "/path/to/LLMind"
 git add llmind-cli/llmind/embedder.py
 git commit -m "feat: add Gemini embedding provider"
 ```
@@ -520,7 +520,7 @@ Expected: All tests PASS
 - [ ] **Step 7: Commit**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind"
+cd "/path/to/LLMind"
 git add llmind-cli/llmind/cli.py
 git commit -m "feat: add gemini to all CLI provider choices"
 ```
@@ -558,7 +558,7 @@ export GEMINI_API_KEY="your-key-here"
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind"
+cd "/path/to/LLMind"
 git add llmind-cli/pyproject.toml llmind-cli/.env.example
 git commit -m "chore: add google-genai dependency and GEMINI_API_KEY to env example"
 ```
@@ -663,7 +663,7 @@ generator_model: provider === "anthropic" ? "claude-sonnet-4-20250514" : provide
 - [ ] **Step 6: Commit**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind"
+cd "/path/to/LLMind"
 git add llmind-converter.jsx
 git commit -m "feat: add Gemini vision provider to React frontend"
 ```
@@ -785,7 +785,7 @@ This already works — gemini is not "ollama" so the key input will show. No cha
 - [ ] **Step 6: Commit**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind"
+cd "/path/to/LLMind"
 git add llmind-converter.jsx
 git commit -m "feat: add Gemini embedding provider to React frontend"
 ```
@@ -812,6 +812,6 @@ Expected: `--provider` shows `[ollama|openai|voyage|anthropic|gemini]`
 - [ ] **Step 3: Push to remote**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind"
+cd "/path/to/LLMind"
 git push origin feature/llmind-cli
 ```

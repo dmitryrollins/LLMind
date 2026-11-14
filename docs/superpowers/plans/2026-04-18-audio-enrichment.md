@@ -2437,7 +2437,7 @@ Expected: PASS (safety change from Task 5 makes this work without watcher change
 
 - [ ] **Step 3: Update `README.md`**
 
-In `/Users/dzmitrytryhubenka/APP DEV/LLMind/README.md`, update the "What it does" section. Replace this paragraph:
+In `/path/to/LLMind/README.md`, update the "What it does" section. Replace this paragraph:
 
 ```markdown
 LLMind takes a standard **JPEG, PNG, or PDF** file and enriches it with a structured metadata layer containing:

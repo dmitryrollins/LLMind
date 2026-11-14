@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-13  
 **Status:** Approved  
-**Project:** `/Users/dzmitrytryhubenka/APP DEV/LLMind`  
+**Project:** `/path/to/LLMind`  
 **Target directory:** `llmind-mac/`
 
 ---
