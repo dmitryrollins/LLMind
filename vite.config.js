@@ -6,13 +6,4 @@ export default defineConfig({
   build: {
     outDir: "dist",
   },
-  server: {
-    port: process.env.PORT ? parseInt(process.env.PORT) : 5173,
-    host: true,
-  },
-  preview: {
-    port: process.env.PORT ? parseInt(process.env.PORT) : 4173,
-    host: true,
-    allowedHosts: true,
-  },
 });
