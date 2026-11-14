@@ -111,7 +111,7 @@ pip install -e '.[all,dev]'
 
 ## Deployment
 
-Deployed via [Railway](https://railway.app). The app is a static build served by `vite preview`.
+Deployed on [Cloudflare Workers](https://developers.cloudflare.com/workers/static-assets/) as a static build (`wrangler.jsonc`). Pushes to `main` build and deploy to app.llmind.org; other branches get a preview URL.
 
 ```bash
 npm install
