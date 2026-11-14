@@ -53,7 +53,7 @@
 - [ ] **Step 1: Create directory structure**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind"
+cd "/path/to/LLMind"
 mkdir -p llmind-cli/llmind
 mkdir -p llmind-cli/tests
 touch llmind-cli/tests/__init__.py
@@ -133,7 +133,7 @@ Expected: `llmind-cli, version 0.1.0`
 - [ ] **Step 7: Commit**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind"
+cd "/path/to/LLMind"
 git add llmind-cli/
 git commit -m "feat: scaffold llmind-cli package"
 ```
@@ -2947,7 +2947,7 @@ Expected: all commands display usage without errors.
 - [ ] **Step 6: Final commit**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind"
+cd "/path/to/LLMind"
 git add llmind-cli/
 git commit -m "test: ensure 80%+ test coverage"
 ```

@@ -64,13 +64,13 @@
 - [ ] **Step 1: Create directory structure**
 
 ```bash
-mkdir -p "/Users/dzmitrytryhubenka/APP DEV/LLMind/llmind-app/app/services"
-mkdir -p "/Users/dzmitrytryhubenka/APP DEV/LLMind/llmind-app/app/routers"
-mkdir -p "/Users/dzmitrytryhubenka/APP DEV/LLMind/llmind-app/tests"
-touch "/Users/dzmitrytryhubenka/APP DEV/LLMind/llmind-app/app/__init__.py"
-touch "/Users/dzmitrytryhubenka/APP DEV/LLMind/llmind-app/app/services/__init__.py"
-touch "/Users/dzmitrytryhubenka/APP DEV/LLMind/llmind-app/app/routers/__init__.py"
-touch "/Users/dzmitrytryhubenka/APP DEV/LLMind/llmind-app/tests/__init__.py"
+mkdir -p "/path/to/LLMind/llmind-app/app/services"
+mkdir -p "/path/to/LLMind/llmind-app/app/routers"
+mkdir -p "/path/to/LLMind/llmind-app/tests"
+touch "/path/to/LLMind/llmind-app/app/__init__.py"
+touch "/path/to/LLMind/llmind-app/app/services/__init__.py"
+touch "/path/to/LLMind/llmind-app/app/routers/__init__.py"
+touch "/path/to/LLMind/llmind-app/tests/__init__.py"
 ```
 
 - [ ] **Step 2: Write pyproject.toml**
@@ -107,7 +107,7 @@ include = ["app*"]
 - [ ] **Step 3: Install dependencies**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind/llmind-app"
+cd "/path/to/LLMind/llmind-app"
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]" -q
@@ -120,7 +120,7 @@ Expected: `OK`
 - [ ] **Step 4: Commit**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind"
+cd "/path/to/LLMind"
 git add llmind-app/pyproject.toml llmind-app/app/__init__.py llmind-app/app/services/__init__.py llmind-app/app/routers/__init__.py llmind-app/tests/__init__.py
 git commit -m "chore(app): project skeleton and dependencies"
 ```
@@ -235,7 +235,7 @@ def test_search_files_returns_sorted_by_score(
 - [ ] **Step 2: Run — expect failure**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind/llmind-app"
+cd "/path/to/LLMind/llmind-app"
 source .venv/bin/activate
 python -m pytest tests/test_search_service.py -v 2>&1 | head -20
 ```
@@ -373,7 +373,7 @@ Expected: `4 passed`
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind"
+cd "/path/to/LLMind"
 git add llmind-app/app/services/search_service.py llmind-app/tests/test_search_service.py
 git commit -m "feat(app): add search_service with scan_directory and search_files"
 ```
@@ -450,7 +450,7 @@ def test_reveal_nonexistent() -> None:
 - [ ] **Step 2: Run — expect failure**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind/llmind-app"
+cd "/path/to/LLMind/llmind-app"
 source .venv/bin/activate
 python -m pytest tests/test_api.py -v 2>&1 | head -15
 ```
@@ -676,7 +676,7 @@ app.include_router(files.router)
 - [ ] **Step 7: Run all tests — expect pass**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind/llmind-app"
+cd "/path/to/LLMind/llmind-app"
 source .venv/bin/activate
 python -m pytest tests/ -v
 ```
@@ -686,7 +686,7 @@ Expected: all tests pass (no failures)
 - [ ] **Step 8: Smoke test the server**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind/llmind-app"
+cd "/path/to/LLMind/llmind-app"
 source .venv/bin/activate
 uvicorn app.main:app --port 58421 &
 sleep 2
@@ -699,7 +699,7 @@ Expected: JSON with `count` and `files` array.
 - [ ] **Step 9: Commit**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind"
+cd "/path/to/LLMind"
 git add llmind-app/app/ llmind-app/tests/
 git commit -m "feat(app): FastAPI server with search, thumbnail, reveal, scan endpoints"
 ```
@@ -723,7 +723,7 @@ Open Xcode manually:
 7. Interface: **SwiftUI**
 8. Language: **Swift**
 9. Uncheck "Include Tests" (we'll add unit tests manually)
-10. Save to: `/Users/dzmitrytryhubenka/APP DEV/LLMind/llmind-mac/`
+10. Save to: `/path/to/LLMind/llmind-mac/`
 
 - [ ] **Step 2: Configure Info.plist for menu-bar-only app**
 
@@ -753,7 +753,7 @@ Add groups (folders) in the project navigator:
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind"
+cd "/path/to/LLMind"
 git add llmind-mac/
 git commit -m "chore(mac): scaffold Xcode project"
 ```
@@ -920,7 +920,7 @@ In Xcode: **⌘B**. Expected: Build Succeeded with 0 errors.
 - [ ] **Step 4: Commit**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind"
+cd "/path/to/LLMind"
 git add llmind-mac/
 git commit -m "feat(mac): add SearchModels and AppSettings"
 ```
@@ -1087,7 +1087,7 @@ Expected: Build Succeeded.
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind"
+cd "/path/to/LLMind"
 git add llmind-mac/
 git commit -m "feat(mac): add LLMindAPI network layer"
 ```
@@ -1164,7 +1164,7 @@ Expected: Build Succeeded.
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind"
+cd "/path/to/LLMind"
 git add llmind-mac/
 git commit -m "feat(mac): add ServerManager with auto-restart"
 ```
@@ -1278,7 +1278,7 @@ Expected: Build Succeeded.
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind"
+cd "/path/to/LLMind"
 git add llmind-mac/
 git commit -m "feat(mac): add HotkeyManager and MenuBarController"
 ```
@@ -1429,7 +1429,7 @@ Expected: Build Succeeded.
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind"
+cd "/path/to/LLMind"
 git add llmind-mac/
 git commit -m "feat(mac): add SearchViewModel with debounce, keyboard actions, Ollama fallback"
 ```
@@ -1816,7 +1816,7 @@ Expected: Build Succeeded.
 - [ ] **Step 7: Commit**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind"
+cd "/path/to/LLMind"
 git add llmind-mac/
 git commit -m "feat(mac): add Search UI views (SearchBar, ResultRow, Footer, ModelPicker, SearchView)"
 ```
@@ -1888,7 +1888,7 @@ Expected: Build Succeeded.
 - [ ] **Step 3: Commit**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind"
+cd "/path/to/LLMind"
 git add llmind-mac/
 git commit -m "feat(mac): add SearchWindowController NSPanel"
 ```
@@ -2076,13 +2076,13 @@ Press **⌘R** in Xcode.
 
 Expected:
 - ⬡ appears in menu bar
-- System prompts for repo root (first launch) → select `/Users/dzmitrytryhubenka/APP DEV/LLMind`
+- System prompts for repo root (first launch) → select `/path/to/LLMind`
 - Accessibility permission prompt appears → grant it in System Settings
 
 - [ ] **Step 6: Commit**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind"
+cd "/path/to/LLMind"
 git add llmind-mac/
 git commit -m "feat(mac): wire up AppDelegate, hotkey, menu bar, and settings"
 ```
@@ -2094,7 +2094,7 @@ git commit -m "feat(mac): wire up AppDelegate, hotkey, menu bar, and settings"
 - [ ] **Step 1: Start the FastAPI server manually to verify it works**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind/llmind-app"
+cd "/path/to/LLMind/llmind-app"
 source .venv/bin/activate
 uvicorn app.main:app --port 58421 --no-access-log
 ```
@@ -2130,7 +2130,7 @@ Expected:
 - [ ] **Step 5: Final commit**
 
 ```bash
-cd "/Users/dzmitrytryhubenka/APP DEV/LLMind"
+cd "/path/to/LLMind"
 git add -A
 git commit -m "feat(mac): complete LLMind Mac app v1"
 git push origin feature/llmind-cli
