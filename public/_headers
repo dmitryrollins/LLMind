@@ -1,0 +1,3 @@
+# Keep workers.dev preview hostnames out of search indexes; only app.llmind.org should be indexed.
+https://:sub.vippie-web.workers.dev/*
+  X-Robots-Tag: noindex

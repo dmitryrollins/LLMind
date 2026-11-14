@@ -1,0 +1,17 @@
+// Cloudflare Workers (static assets) config for the web converter at app.llmind.org.
+// Deployed by Workers Builds from GitHub: build `npm run build`, deploy `npx wrangler deploy`.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "llmind-app",
+  "compatibility_date": "2026-11-01",
+  // Serve production only on app.llmind.org; keep per-branch preview URLs.
+  "workers_dev": false,
+  "preview_urls": true,
+  // Required by `wrangler preview` (Workers Builds runs it for non-production branches).
+  "previews": {},
+  "routes": [{ "pattern": "app.llmind.org", "custom_domain": true }],
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
