@@ -11,3 +11,8 @@ llmind-mac/
 # Local tool state
 .superpowers/
 .DS_Store
+
+# Cloudflare local secrets and state
+.dev.vars*
+.env.*
+!.env.example
